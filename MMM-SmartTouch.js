@@ -12,7 +12,10 @@ Module.register("MMM-SmartTouch", {
 
   start: function () {
     Log.info(this.name + " has started...");
+    this.currentBrightness = 255; // Default brightness level
     this.sendSocketNotification("CONFIG", this.config);
+    // Get current brightness level on startup
+    this.sendSocketNotification("GET_BRIGHTNESS", {});
   },
 
   getStyles: function () {
@@ -110,6 +113,32 @@ Module.register("MMM-SmartTouch", {
     return restartButtonItem
   },
 
+  createBrightnessUpButton: function () {
+    const brightnessUpButtonItem = document.createElement("li");
+    brightnessUpButtonItem.innerHTML = "<span class='fa fa-sun-o fa-3x'></span>"
+        + "<br>" + this.translate('BRIGHTNESS_UP');
+    brightnessUpButtonItem.className = "li-t"
+
+    // Send brightness up notification when clicked
+    brightnessUpButtonItem.addEventListener("click",
+        () => this.sendSocketNotification("BRIGHTNESS_UP", {}));
+
+    return brightnessUpButtonItem
+  },
+
+  createBrightnessDownButton: function () {
+    const brightnessDownButtonItem = document.createElement("li");
+    brightnessDownButtonItem.innerHTML = "<span class='fa fa-moon-o fa-3x'></span>"
+        + "<br>" + this.translate('BRIGHTNESS_DOWN');
+    brightnessDownButtonItem.className = "li-t"
+
+    // Send brightness down notification when clicked
+    brightnessDownButtonItem.addEventListener("click",
+        () => this.sendSocketNotification("BRIGHTNESS_DOWN", {}));
+
+    return brightnessDownButtonItem
+  },
+
   createMainMenuDiv: function () {
     const mainMenuDiv = document.createElement("div");
     mainMenuDiv.className = "st-container__main-menu";
@@ -117,8 +146,12 @@ Module.register("MMM-SmartTouch", {
 
     const shutdownButton = this.createShutdownButton();
     const restartButton = this.createRestartButton();
+    const brightnessUpButton = this.createBrightnessUpButton();
+    const brightnessDownButton = this.createBrightnessDownButton();
 
     const buttonList = document.createElement("ul");
+    buttonList.appendChild(brightnessUpButton);
+    buttonList.appendChild(brightnessDownButton);
     buttonList.appendChild(shutdownButton);
     buttonList.appendChild(restartButton);
 
@@ -150,6 +183,10 @@ Module.register("MMM-SmartTouch", {
 
   // Recieve notification from sockets via nodehelper.js
   socketNotificationReceived: function (notification, payload) {
+    if (notification === "BRIGHTNESS_CHANGED") {
+      this.currentBrightness = payload;
+      Log.info(`Brightness changed to: ${this.currentBrightness}`);
+    }
   },
 
 });

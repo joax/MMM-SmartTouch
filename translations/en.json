@@ -1,4 +1,6 @@
 {
   "SHUTDOWN": "Shutdown Rpi",
-  "RESTART": "Restart Rpi"
+  "RESTART": "Restart Rpi",
+  "BRIGHTNESS_UP": "Brightness +",
+  "BRIGHTNESS_DOWN": "Brightness -"
 }

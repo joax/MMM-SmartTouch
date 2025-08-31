@@ -1,4 +1,6 @@
 {
   "SHUTDOWN": "Slå av Rpi",
-  "RESTART": "Restart Rpi"
+  "RESTART": "Restart Rpi",
+  "BRIGHTNESS_UP": "Lysstyrke +",
+  "BRIGHTNESS_DOWN": "Lysstyrke -"
 }
