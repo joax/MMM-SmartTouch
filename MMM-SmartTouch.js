@@ -14,9 +14,7 @@ Module.register("MMM-SmartTouch", {
     Log.info(this.name + " has started...");
     this.currentBrightness = 255; // Default brightness level
     this.goveeDevices = []; // Store Govee devices
-    this.expandedDeviceMac = null; // Track which device is currently expanded
-    this.sliderInteractionActive = false; // Track if user is interacting with sliders
-    this.sliderInteractionTimeout = null; // Timeout to clear interaction lock
+    this.currentModalDeviceMac = null; // Track which device modal is currently open
     this.sendSocketNotification("CONFIG", this.config);
     // Get current brightness level on startup
     this.sendSocketNotification("GET_BRIGHTNESS", {});
@@ -218,141 +216,9 @@ Module.register("MMM-SmartTouch", {
     buttonElement.className = `li-t govee-device ${statusClass}`;
   },
 
-  toggleDeviceControls: function (deviceElement, device) {
-    const isExpanded = deviceElement.dataset.expanded === "true";
-    const goveeMenu = document.getElementById("st-govee-menu");
-    
-    if (isExpanded) {
-      // Collapse - remove controls and restore original content
-      this.collapseDeviceControls(deviceElement, device);
-      // Check if any devices are still expanded
-      const hasExpanded = goveeMenu.querySelector('.expanded');
-      if (!hasExpanded) {
-        goveeMenu.classList.remove('has-expanded');
-        this.expandedDeviceMac = null; // Clear expanded device tracking
-      }
-    } else {
-      // Collapse any other expanded devices first
-      const otherExpanded = goveeMenu.querySelectorAll('.expanded');
-      otherExpanded.forEach(el => {
-        const deviceMac = el.dataset.deviceMac;
-        const deviceObj = this.goveeDevices.find(d => d.device === deviceMac);
-        if (deviceObj) {
-          this.collapseDeviceControls(el, deviceObj);
-        }
-      });
-      
-      // Expand this device
-      this.expandDeviceControls(deviceElement, device);
-      goveeMenu.classList.add('has-expanded');
-      this.expandedDeviceMac = device.device; // Track expanded device
-    }
-  },
 
-  collapseDeviceControls: function (deviceElement, device) {
-    const statusIcon = device.powerState === "on" ? "fa-lightbulb-o" : "fa-circle-o";
-    deviceElement.innerHTML = `<span class='fa ${statusIcon} fa-lg'></span>`
-        + "<br>" + device.deviceName;
-    deviceElement.dataset.expanded = "false";
-    deviceElement.classList.remove("expanded");
-    
-    // Clear expanded tracking if this was the expanded device
-    if (this.expandedDeviceMac === device.device) {
-      this.expandedDeviceMac = null;
-    }
-  },
 
-  expandDeviceControls: function (deviceElement, device) {
-    const statusIcon = device.powerState === "on" ? "fa-lightbulb-o" : "fa-circle-o";
-    
-    // Create the expanded content structure
-    const deviceHeader = document.createElement("div");
-    deviceHeader.className = "device-header";
-    deviceHeader.innerHTML = `<span class='fa ${statusIcon} fa-lg'></span><span class="device-name">${device.deviceName}</span>`;
-    
-    const deviceControls = document.createElement("div");
-    deviceControls.className = "device-controls";
-    
-    // Power button
-    const powerBtn = document.createElement("button");
-    powerBtn.className = `power-btn ${device.powerState}`;
-    powerBtn.innerHTML = '<span class="fa fa-power-off"></span>';
-    powerBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      this.toggleDevicePower(device.device, device.model, device.powerState);
-    });
-    
-    // Warm control group
-    const warmGroup = document.createElement("div");
-    warmGroup.className = "control-group";
-    warmGroup.innerHTML = `<label>Warm:</label><span class="value-display">${device.colorTemperature || 6500}K</span>`;
-    
-    const warmSlider = document.createElement("input");
-    warmSlider.type = "range";
-    warmSlider.className = "warm-slider";
-    warmSlider.min = "2000";
-    warmSlider.max = "9000";
-    warmSlider.value = device.colorTemperature || 6500;
-    warmSlider.addEventListener("mousedown", () => this.startSliderInteraction());
-    warmSlider.addEventListener("touchstart", () => this.startSliderInteraction());
-    
-    warmSlider.addEventListener("change", (e) => {
-      e.stopPropagation();
-      console.log(`Warm slider changed to: ${e.target.value}K for device ${device.device}`);
-      this.updateDeviceColorTemperature(device.device, device.model, e.target.value);
-      warmGroup.querySelector('.value-display').textContent = e.target.value + 'K';
-    });
-    
-    // Also handle input event for real-time feedback
-    warmSlider.addEventListener("input", (e) => {
-      e.stopPropagation();
-      this.startSliderInteraction(); // Refresh the interaction lock
-      warmGroup.querySelector('.value-display').textContent = e.target.value + 'K';
-    });
-    warmGroup.insertBefore(warmSlider, warmGroup.querySelector('.value-display'));
-    
-    // Intensity control group
-    const intensityGroup = document.createElement("div");
-    intensityGroup.className = "control-group";
-    intensityGroup.innerHTML = `<label>Intensity:</label><span class="value-display">${device.brightness || 100}%</span>`;
-    
-    const intensitySlider = document.createElement("input");
-    intensitySlider.type = "range";
-    intensitySlider.className = "intensity-slider";
-    intensitySlider.min = "1";
-    intensitySlider.max = "100";
-    intensitySlider.value = device.brightness || 100;
-    intensitySlider.addEventListener("mousedown", () => this.startSliderInteraction());
-    intensitySlider.addEventListener("touchstart", () => this.startSliderInteraction());
-    
-    intensitySlider.addEventListener("change", (e) => {
-      e.stopPropagation();
-      console.log(`Intensity slider changed to: ${e.target.value}% for device ${device.device}`);
-      this.updateDeviceBrightness(device.device, device.model, e.target.value);
-      intensityGroup.querySelector('.value-display').textContent = e.target.value + '%';
-    });
-    
-    // Also handle input event for real-time feedback
-    intensitySlider.addEventListener("input", (e) => {
-      e.stopPropagation();
-      this.startSliderInteraction(); // Refresh the interaction lock
-      intensityGroup.querySelector('.value-display').textContent = e.target.value + '%';
-    });
-    intensityGroup.insertBefore(intensitySlider, intensityGroup.querySelector('.value-display'));
-    
-    // Assemble the controls
-    deviceControls.appendChild(powerBtn);
-    deviceControls.appendChild(warmGroup);
-    deviceControls.appendChild(intensityGroup);
-    
-    // Clear and add new content
-    deviceElement.innerHTML = '';
-    deviceElement.appendChild(deviceHeader);
-    deviceElement.appendChild(deviceControls);
-    
-    deviceElement.dataset.expanded = "true";
-    deviceElement.classList.add("expanded");
-  },
+
 
   // ===== GOVEE DEVICE CONTROL METHODS =====
   
@@ -426,62 +292,9 @@ Module.register("MMM-SmartTouch", {
     };
   },
 
-  startSliderInteraction: function () {
-    console.log("Slider interaction started - locking menu refreshes");
-    this.sliderInteractionActive = true;
-    
-    // Clear any existing timeout
-    if (this.sliderInteractionTimeout) {
-      clearTimeout(this.sliderInteractionTimeout);
-    }
-    
-    // Set timeout to clear the lock after 2 seconds of inactivity
-    this.sliderInteractionTimeout = setTimeout(() => {
-      console.log("Slider interaction timeout - unlocking menu refreshes");
-      this.sliderInteractionActive = false;
-      this.sliderInteractionTimeout = null;
-    }, 2000);
-  },
 
-  updateExpandedDeviceValues: function (deviceMac, brightness, colorTemperature) {
-    // Only update if this device is currently expanded
-    if (this.expandedDeviceMac !== deviceMac) {
-      return;
-    }
 
-    const expandedElement = document.querySelector(`[data-device-mac="${deviceMac}"].expanded`);
-    if (!expandedElement) {
-      return;
-    }
 
-    // Update brightness slider and display if provided
-    if (brightness !== undefined) {
-      const intensitySlider = expandedElement.querySelector('.intensity-slider');
-      if (intensitySlider) {
-        intensitySlider.value = brightness;
-        // Find the value display in the same control group
-        const controlGroup = intensitySlider.closest('.control-group');
-        const intensityDisplay = controlGroup ? controlGroup.querySelector('.value-display') : null;
-        if (intensityDisplay) {
-          intensityDisplay.textContent = brightness + '%';
-        }
-      }
-    }
-
-    // Update color temperature slider and display if provided
-    if (colorTemperature !== undefined) {
-      const warmSlider = expandedElement.querySelector('.warm-slider');
-      if (warmSlider) {
-        warmSlider.value = colorTemperature;
-        // Find the value display in the same control group
-        const controlGroup = warmSlider.closest('.control-group');
-        const warmDisplay = controlGroup ? controlGroup.querySelector('.value-display') : null;
-        if (warmDisplay) {
-          warmDisplay.textContent = colorTemperature + 'K';
-        }
-      }
-    }
-  },
 
   // ===== ALL DEVICES BUTTON =====
   
@@ -594,12 +407,19 @@ Module.register("MMM-SmartTouch", {
     // Update modal title
     modalTitle.textContent = `${device.deviceName} Configuration`;
     
-    // Store current device for updates
-    this.currentModalDevice = device;
+    // Store device MAC for updates (not the device object reference)
+    this.currentModalDeviceMac = device.device;
+    
+    // Get fresh device state from our array to ensure latest data
+    const currentDeviceState = this.getDeviceState(device.device);
+    if (!currentDeviceState) {
+      console.error("Device not found in goveeDevices array:", device.device);
+      return;
+    }
     
     // Always recreate controls with fresh event listeners and current state
     modalBody.innerHTML = '';
-    const deviceControls = this.createModalDeviceControls(device);
+    const deviceControls = this.createModalDeviceControls(currentDeviceState);
     modalBody.appendChild(deviceControls);
     
     // Show modal
@@ -611,7 +431,7 @@ Module.register("MMM-SmartTouch", {
     const modalBody = document.getElementById("modal-body-content");
     
     modal.style.display = "none";
-    this.currentModalDevice = null;
+    this.currentModalDeviceMac = null;
     modalBody.innerHTML = '';
   },
 
@@ -666,7 +486,11 @@ Module.register("MMM-SmartTouch", {
     
     powerBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      this.toggleDevicePower(device.device, device.model, device.powerState);
+      // Get current device state, not the state when modal was created
+      const currentDevice = this.getDeviceState(device.device);
+      if (currentDevice) {
+        this.toggleDevicePower(device.device, device.model, currentDevice.powerState);
+      }
     });
     
     powerControl.appendChild(powerBtn);
@@ -737,7 +561,7 @@ Module.register("MMM-SmartTouch", {
 
   updateModalValues: function (deviceMac, brightness, colorTemperature, powerState) {
     // Only update if this device modal is currently open
-    if (!this.currentModalDevice || this.currentModalDevice.device !== deviceMac) {
+    if (!this.currentModalDeviceMac || this.currentModalDeviceMac !== deviceMac) {
       return;
     }
 
