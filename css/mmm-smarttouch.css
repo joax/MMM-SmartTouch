@@ -118,9 +118,9 @@
 }
 
 .st-container__main-menu > ul > li {
-  font-size: 16px;
-  padding-top: 20px;
-  padding-bottom: 10px;
+  font-size: 12px;
+  padding-top: 10px;
+  padding-bottom: 5px;
   border-bottom: 1px solid #666;
 }
 

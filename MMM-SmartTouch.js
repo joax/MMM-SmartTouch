@@ -89,7 +89,7 @@ Module.register("MMM-SmartTouch", {
 
   createShutdownButton: function () {
     const shutdownButtonItem = document.createElement("li");
-    shutdownButtonItem.innerHTML = "<span class='fa fa-power-off fa-3x'></span>"
+    shutdownButtonItem.innerHTML = "<span class='fa fa-power-off fa-lg'></span>"
         + "<br>" +  this.translate('SHUTDOWN');
     shutdownButtonItem.className = "li-t"
 
@@ -102,7 +102,7 @@ Module.register("MMM-SmartTouch", {
 
   createRestartButton: function () {
     const restartButtonItem = document.createElement("li");
-    restartButtonItem.innerHTML = "<span class='fa fa-repeat fa-3x'></span>"
+    restartButtonItem.innerHTML = "<span class='fa fa-repeat fa-lg'></span>"
         + "<br>" + this.translate('RESTART');
     restartButtonItem.className = "li-t"
 
@@ -115,7 +115,7 @@ Module.register("MMM-SmartTouch", {
 
   createBrightnessUpButton: function () {
     const brightnessUpButtonItem = document.createElement("li");
-    brightnessUpButtonItem.innerHTML = "<span class='fa fa-sun-o fa-3x'></span>"
+    brightnessUpButtonItem.innerHTML = "<span class='fa fa-sun-o fa-lg'></span>"
         + "<br>" + this.translate('BRIGHTNESS_UP');
     brightnessUpButtonItem.className = "li-t"
 
@@ -128,7 +128,7 @@ Module.register("MMM-SmartTouch", {
 
   createBrightnessDownButton: function () {
     const brightnessDownButtonItem = document.createElement("li");
-    brightnessDownButtonItem.innerHTML = "<span class='fa fa-moon-o fa-3x'></span>"
+    brightnessDownButtonItem.innerHTML = "<span class='fa fa-moon-o fa-lg'></span>"
         + "<br>" + this.translate('BRIGHTNESS_DOWN');
     brightnessDownButtonItem.className = "li-t"
 
