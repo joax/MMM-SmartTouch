@@ -643,13 +643,17 @@ Module.register("MMM-SmartTouch", {
   updateModalValues: function (deviceMac, brightness, colorTemperature, powerState) {
     // Only update if this device modal is currently open
     if (!this.currentModalDeviceMac || this.currentModalDeviceMac !== deviceMac) {
+      Log.info(`Skipping modal update - not for current device. Current: ${this.currentModalDeviceMac}, Update for: ${deviceMac}`);
       return;
     }
 
     const modal = document.getElementById("light-config-modal");
     if (modal.style.display === "none") {
+      Log.info(`Skipping modal update - modal not visible`);
       return;
     }
+
+    Log.info(`Updating modal values for ${deviceMac}: brightness=${brightness}%, colorTemp=${colorTemperature}K, power=${powerState}`);
 
     // Update power state and status display
     if (powerState !== undefined) {
@@ -666,6 +670,7 @@ Module.register("MMM-SmartTouch", {
         statusText.textContent = "OFF";
         powerBtn.className = "modal-power-btn off";
       }
+      Log.info(`Updated power display to: ${powerState}`);
     }
 
     // Update brightness slider and display (now in 3rd column)
@@ -674,8 +679,11 @@ Module.register("MMM-SmartTouch", {
       const intensityControl = modal.querySelector('.vertical-slider-control:nth-child(3)');
       const intensityDisplay = intensityControl ? intensityControl.querySelector('.value-display') : null;
       if (intensitySlider && intensityDisplay) {
+        Log.info(`Updating brightness slider from ${intensitySlider.value}% to ${brightness}%`);
         intensitySlider.value = brightness;
         intensityDisplay.textContent = brightness + '%';
+      } else {
+        Log.warn(`Could not find intensity slider or display elements`);
       }
     }
 
@@ -685,8 +693,11 @@ Module.register("MMM-SmartTouch", {
       const warmControl = modal.querySelector('.vertical-slider-control:nth-child(2)');
       const warmDisplay = warmControl ? warmControl.querySelector('.value-display') : null;
       if (warmSlider && warmDisplay) {
+        Log.info(`Updating color temp slider from ${warmSlider.value}K to ${colorTemperature}K`);
         warmSlider.value = colorTemperature;
         warmDisplay.textContent = colorTemperature + 'K';
+      } else {
+        Log.warn(`Could not find color temp slider or display elements`);
       }
     }
   },
@@ -890,6 +901,18 @@ Module.register("MMM-SmartTouch", {
       if (updatedDevice) {
         // Update modal values if this device modal is currently open
         this.updateModalValues(payload.device, payload.brightness, payload.colorTemperature, payload.powerState);
+        
+        // If modal is open for this device, also recreate the controls to ensure fresh values
+        if (this.currentModalDeviceMac === payload.device) {
+          const modal = document.getElementById("light-config-modal");
+          const modalBody = document.getElementById("modal-body-content");
+          if (modal && modal.style.display !== "none" && modalBody) {
+            Log.info(`Recreating modal controls with fresh state for ${payload.device}`);
+            modalBody.innerHTML = '';
+            const deviceControls = this.createModalDeviceControls(updatedDevice);
+            modalBody.appendChild(deviceControls);
+          }
+        }
         
         // Update menu button to reflect fresh state
         this.updateDeviceButtonInMenu(payload.device);

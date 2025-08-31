@@ -134,18 +134,42 @@ module.exports = NodeHelper.create({
         // Parse properties array format
         if (state.properties && Array.isArray(state.properties)) {
           const properties = state.properties;
+          console.log(`Analyzing properties for ${deviceMac}:`, JSON.stringify(properties, null, 2));
           
           // Find power state
           const powerProp = properties.find(p => p.powerState !== undefined);
           const powerState = powerProp ? powerProp.powerState : "unknown";
+          console.log(`Power state property:`, powerProp);
           
           // Find brightness
           const brightnessProp = properties.find(p => p.brightness !== undefined);
           const brightness = brightnessProp ? brightnessProp.brightness : 50;
+          console.log(`Brightness property:`, brightnessProp);
           
-          // Find color temperature (may not be present for all devices)
-          const colorTempProp = properties.find(p => p.colorTem !== undefined || p.colorTemp !== undefined);
-          const colorTemperature = colorTempProp ? (colorTempProp.colorTem || colorTempProp.colorTemp) : 6500;
+          // Find color temperature - check multiple possible property names
+          const colorTempProp = properties.find(p => 
+            p.colorTem !== undefined || 
+            p.colorTemp !== undefined || 
+            p.colorTemInKelvin !== undefined ||
+            p.ct !== undefined ||
+            (p.color && p.color.colorTemInKelvin !== undefined)
+          );
+          console.log(`Color temp property:`, colorTempProp);
+          
+          let colorTemperature = 6500; // default
+          if (colorTempProp) {
+            if (colorTempProp.colorTem !== undefined) {
+              colorTemperature = colorTempProp.colorTem;
+            } else if (colorTempProp.colorTemp !== undefined) {
+              colorTemperature = colorTempProp.colorTemp;
+            } else if (colorTempProp.colorTemInKelvin !== undefined) {
+              colorTemperature = colorTempProp.colorTemInKelvin;
+            } else if (colorTempProp.ct !== undefined) {
+              colorTemperature = colorTempProp.ct;
+            } else if (colorTempProp.color && colorTempProp.color.colorTemInKelvin !== undefined) {
+              colorTemperature = colorTempProp.color.colorTemInKelvin;
+            }
+          }
           
           const parsedState = {
             powerState: powerState,
