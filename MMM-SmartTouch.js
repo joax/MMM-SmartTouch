@@ -14,6 +14,7 @@ Module.register("MMM-SmartTouch", {
     Log.info(this.name + " has started...");
     this.currentBrightness = 255; // Default brightness level
     this.goveeDevices = []; // Store Govee devices
+    this.expandedDeviceMac = null; // Track which device is currently expanded
     this.sendSocketNotification("CONFIG", this.config);
     // Get current brightness level on startup
     this.sendSocketNotification("GET_BRIGHTNESS", {});
@@ -216,6 +217,7 @@ Module.register("MMM-SmartTouch", {
       const hasExpanded = goveeMenu.querySelector('.expanded');
       if (!hasExpanded) {
         goveeMenu.classList.remove('has-expanded');
+        this.expandedDeviceMac = null; // Clear expanded device tracking
       }
     } else {
       // Collapse any other expanded devices first
@@ -231,6 +233,7 @@ Module.register("MMM-SmartTouch", {
       // Expand this device
       this.expandDeviceControls(deviceElement, device);
       goveeMenu.classList.add('has-expanded');
+      this.expandedDeviceMac = device.device; // Track expanded device
     }
   },
 
@@ -240,6 +243,11 @@ Module.register("MMM-SmartTouch", {
         + "<br>" + device.deviceName;
     deviceElement.dataset.expanded = "false";
     deviceElement.classList.remove("expanded");
+    
+    // Clear expanded tracking if this was the expanded device
+    if (this.expandedDeviceMac === device.device) {
+      this.expandedDeviceMac = null;
+    }
   },
 
   expandDeviceControls: function (deviceElement, device) {
@@ -334,6 +342,46 @@ Module.register("MMM-SmartTouch", {
       model: deviceModel,
       brightness: parseInt(brightness)
     });
+  },
+
+  updateExpandedDeviceValues: function (deviceMac, brightness, colorTemperature) {
+    // Only update if this device is currently expanded
+    if (this.expandedDeviceMac !== deviceMac) {
+      return;
+    }
+
+    const expandedElement = document.querySelector(`[data-device-mac="${deviceMac}"].expanded`);
+    if (!expandedElement) {
+      return;
+    }
+
+    // Update brightness slider and display if provided
+    if (brightness !== undefined) {
+      const intensitySlider = expandedElement.querySelector('.intensity-slider');
+      if (intensitySlider) {
+        intensitySlider.value = brightness;
+        // Find the value display in the same control group
+        const controlGroup = intensitySlider.closest('.control-group');
+        const intensityDisplay = controlGroup ? controlGroup.querySelector('.value-display') : null;
+        if (intensityDisplay) {
+          intensityDisplay.textContent = brightness + '%';
+        }
+      }
+    }
+
+    // Update color temperature slider and display if provided
+    if (colorTemperature !== undefined) {
+      const warmSlider = expandedElement.querySelector('.warm-slider');
+      if (warmSlider) {
+        warmSlider.value = colorTemperature;
+        // Find the value display in the same control group
+        const controlGroup = warmSlider.closest('.control-group');
+        const warmDisplay = controlGroup ? controlGroup.querySelector('.value-display') : null;
+        if (warmDisplay) {
+          warmDisplay.textContent = colorTemperature + 'K';
+        }
+      }
+    }
   },
 
   createAllLightsButton: function () {
@@ -472,7 +520,10 @@ Module.register("MMM-SmartTouch", {
     if (notification === "GOVEE_DEVICES_LIST") {
       this.goveeDevices = payload;
       Log.info(`Received ${this.goveeDevices.length} Govee devices`);
-      this.refreshGoveeMenu();
+      // Only refresh menu if no device is currently expanded
+      if (!this.expandedDeviceMac) {
+        this.refreshGoveeMenu();
+      }
     }
 
     if (notification === "GOVEE_DEVICE_TOGGLED") {
@@ -481,7 +532,10 @@ Module.register("MMM-SmartTouch", {
       const deviceIndex = this.goveeDevices.findIndex(d => d.device === payload.device);
       if (deviceIndex !== -1) {
         this.goveeDevices[deviceIndex].powerState = payload.newState;
-        this.refreshGoveeMenu();
+        // Only refresh menu if no device is currently expanded
+        if (!this.expandedDeviceMac) {
+          this.refreshGoveeMenu();
+        }
       }
     }
 
@@ -494,7 +548,10 @@ Module.register("MMM-SmartTouch", {
           this.goveeDevices[deviceIndex].powerState = result.newState;
         }
       });
-      this.refreshGoveeMenu();
+      // Only refresh menu if no device is currently expanded
+      if (!this.expandedDeviceMac) {
+        this.refreshGoveeMenu();
+      }
     }
 
     if (notification === "GOVEE_DEVICE_STATE_UPDATED") {
@@ -509,7 +566,9 @@ Module.register("MMM-SmartTouch", {
           this.goveeDevices[deviceIndex].colorTemperature = payload.colorTemperature;
           Log.info(`Device ${payload.device} color temperature updated to ${payload.colorTemperature}K`);
         }
-        // Don't refresh menu here to avoid interrupting user interaction with sliders
+        
+        // Update expanded device values in place if this device is currently expanded
+        this.updateExpandedDeviceValues(payload.device, payload.brightness, payload.colorTemperature);
       }
     }
   },

@@ -185,8 +185,8 @@
 
 .st-container__govee-menu > ul > li {
   font-size: 12px;
-  padding-top: 20px;
-  padding-bottom: 15px;
+  padding-top: 10px;
+  padding-bottom: 5px;
   border-bottom: 1px solid #666;
   cursor: pointer;
 }
