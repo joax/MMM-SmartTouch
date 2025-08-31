@@ -318,7 +318,7 @@
 
 /* Turn All On/Off Button */
 .st-container__govee-menu > ul > li.all-lights-button {
-  margin-bottom: 5px;
+  margin-bottom: 0px;
   font-weight: bold;
   transition: all 0.3s;
 }
@@ -407,19 +407,31 @@
 .modal-device-controls {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 10px;
 }
 
-.modal-status-section {
-  text-align: center;
-}
-
-.modal-sliders-section {
+.modal-controls-row {
   display: flex;
   justify-content: space-around;
   align-items: flex-start;
-  gap: 30px;
-  padding: 0 20px;
+  gap: 20px;
+  padding: 0 10px;
+}
+
+.power-control-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+
+.power-status-container {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 10px 0;
 }
 
 .vertical-slider-control {
@@ -430,6 +442,7 @@
   flex: 1;
 }
 
+.power-control-column h4,
 .vertical-slider-control h4 {
   margin: 0 0 15px 0;
   font-size: 16px;
@@ -454,13 +467,18 @@
 .modal-power-btn {
   background: rgba(255, 255, 255, 0.1);
   border: 2px solid #666;
-  border-radius: 8px;
+  border-radius: 50%;
   color: #fff;
-  padding: 12px 24px;
+  padding: 15px;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 20px;
   transition: all 0.3s;
-  min-width: 150px;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
 }
 
 .modal-power-btn:hover {

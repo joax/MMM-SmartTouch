@@ -580,35 +580,37 @@ Module.register("MMM-SmartTouch", {
     const controlsContainer = document.createElement("div");
     controlsContainer.className = "modal-device-controls";
 
-    // Device status and power control (top section)
-    const statusSection = document.createElement("div");
-    statusSection.className = "modal-status-section";
+    // Single row with power button and sliders
+    const controlsRow = document.createElement("div");
+    controlsRow.className = "modal-controls-row";
+
+    // Power control (left column)
+    const powerControl = document.createElement("div");
+    powerControl.className = "power-control-column";
     
     const statusIcon = device.powerState === "on" ? "fa-lightbulb-o" : "fa-circle-o";
     const statusText = device.powerState === "on" ? "ON" : "OFF";
     
-    statusSection.innerHTML = `
-      <div class="device-status">
-        <span class='fa ${statusIcon} fa-2x'></span>
-        <span class="status-text">${statusText}</span>
+    powerControl.innerHTML = `
+      <h4>Power</h4>
+      <div class="power-status-container">
+        <div class="device-status">
+          <span class='fa ${statusIcon} fa-2x'></span>
+          <span class="status-text">${statusText}</span>
+        </div>
       </div>
     `;
     
     const powerBtn = document.createElement("button");
     powerBtn.className = `modal-power-btn ${device.powerState}`;
-    powerBtn.innerHTML = '<span class="fa fa-power-off"></span> Toggle Power';
+    powerBtn.innerHTML = '<span class="fa fa-power-off"></span>';
     powerBtn.addEventListener("click", () => {
       this.toggleDevicePower(device.device, device.model, device.powerState);
     });
     
-    statusSection.appendChild(powerBtn);
-    controlsContainer.appendChild(statusSection);
+    powerControl.appendChild(powerBtn);
 
-    // Sliders section (horizontal row with vertical sliders)
-    const slidersSection = document.createElement("div");
-    slidersSection.className = "modal-sliders-section";
-
-    // Color Temperature control (vertical slider)
+    // Color Temperature control (middle column)
     const warmControl = document.createElement("div");
     warmControl.className = "vertical-slider-control";
     warmControl.innerHTML = `
@@ -635,7 +637,7 @@ Module.register("MMM-SmartTouch", {
       this.updateDeviceWarm(device.device, device.model, e.target.value);
     });
 
-    // Brightness control (vertical slider)
+    // Brightness control (right column)
     const intensityControl = document.createElement("div");
     intensityControl.className = "vertical-slider-control";
     intensityControl.innerHTML = `
@@ -662,9 +664,11 @@ Module.register("MMM-SmartTouch", {
       this.updateDeviceIntensity(device.device, device.model, e.target.value);
     });
 
-    slidersSection.appendChild(warmControl);
-    slidersSection.appendChild(intensityControl);
-    controlsContainer.appendChild(slidersSection);
+    // Add all columns to the row
+    controlsRow.appendChild(powerControl);
+    controlsRow.appendChild(warmControl);
+    controlsRow.appendChild(intensityControl);
+    controlsContainer.appendChild(controlsRow);
 
     return controlsContainer;
   },
@@ -697,10 +701,10 @@ Module.register("MMM-SmartTouch", {
       }
     }
 
-    // Update brightness slider and display
+    // Update brightness slider and display (now in 3rd column)
     if (brightness !== undefined) {
       const intensitySlider = modal.querySelector('.modal-intensity-slider');
-      const intensityControl = modal.querySelector('.vertical-slider-control:nth-child(2)');
+      const intensityControl = modal.querySelector('.vertical-slider-control:nth-child(3)');
       const intensityDisplay = intensityControl ? intensityControl.querySelector('.value-display') : null;
       if (intensitySlider && intensityDisplay) {
         intensitySlider.value = brightness;
@@ -708,10 +712,10 @@ Module.register("MMM-SmartTouch", {
       }
     }
 
-    // Update color temperature slider and display
+    // Update color temperature slider and display (now in 2nd column)
     if (colorTemperature !== undefined) {
       const warmSlider = modal.querySelector('.modal-warm-slider');
-      const warmControl = modal.querySelector('.vertical-slider-control:nth-child(1)');
+      const warmControl = modal.querySelector('.vertical-slider-control:nth-child(2)');
       const warmDisplay = warmControl ? warmControl.querySelector('.value-display') : null;
       if (warmSlider && warmDisplay) {
         warmSlider.value = colorTemperature;
