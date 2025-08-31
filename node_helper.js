@@ -286,13 +286,15 @@ module.exports = NodeHelper.create({
       const { action, devices } = payload;
       
       console.log(`Turning all ${devices.length} devices ${action}`)
+      console.log(`Device states before: ${devices.map(d => `${d.deviceName}:${d.powerState}`).join(', ')}`);
       
       // Process all devices in parallel
       const promises = devices.map(device => {
+        console.log(`Sending ${action} command to device ${device.deviceName} (currently ${device.powerState})`);
         return this.sendGoveeCommand({ name: "turn", value: action }, device.device, device.model)
           .then(success => {
             if (success) {
-              console.log(`Device ${device.deviceName} turned ${action}`);
+              console.log(`Device ${device.deviceName} turned ${action} successfully`);
               return { device: device.device, success: true, newState: action };
             } else {
               console.error(`Failed to turn ${action} device ${device.deviceName}`);

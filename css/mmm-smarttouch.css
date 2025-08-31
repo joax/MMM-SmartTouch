@@ -360,9 +360,9 @@
   border: 2px solid #666;
   border-radius: 10px;
   padding: 0;
-  max-width: 500px;
+  max-width: 450px;
   width: 90%;
-  max-height: 80%;
+  max-height: 70%;
   overflow-y: auto;
   color: #fff;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
@@ -401,22 +401,38 @@
 }
 
 .modal-body {
-  padding: 30px;
+  padding: 20px;
 }
 
 .modal-device-controls {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 20px;
 }
 
-.modal-section {
+.modal-status-section {
   text-align: center;
 }
 
-.modal-section h3 {
-  margin: 0 0 20px 0;
-  font-size: 18px;
+.modal-sliders-section {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  gap: 30px;
+  padding: 0 20px;
+}
+
+.vertical-slider-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+
+.vertical-slider-control h4 {
+  margin: 0 0 15px 0;
+  font-size: 16px;
   color: #ccc;
   font-weight: normal;
 }
@@ -463,34 +479,37 @@
   color: #f00;
 }
 
-.slider-container {
+.vertical-slider-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 15px;
-  margin: 20px 0;
+  height: 120px;
+  margin: 10px 0;
 }
 
-.slider-container label {
-  font-size: 14px;
+.slider-label-top,
+.slider-label-bottom {
+  font-size: 12px;
   color: #ccc;
-  min-width: 40px;
+  margin: 5px 0;
 }
 
-.modal-warm-slider,
-.modal-intensity-slider {
-  flex: 1;
-  height: 8px;
+.vertical-slider {
+  writing-mode: bt-lr; /* IE */
+  -webkit-appearance: slider-vertical; /* WebKit */
+  appearance: slider-vertical; /* Standard */
+  width: 10px;
+  height: 80px;
   background: #444;
   outline: none;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
 }
 
-.modal-warm-slider::-webkit-slider-thumb,
-.modal-intensity-slider::-webkit-slider-thumb {
+.vertical-slider::-webkit-slider-thumb {
   appearance: none;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   background: #fff;
   border-radius: 50%;
   cursor: pointer;
@@ -498,10 +517,9 @@
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
-.modal-warm-slider::-moz-range-thumb,
-.modal-intensity-slider::-moz-range-thumb {
-  width: 24px;
-  height: 24px;
+.vertical-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
   background: #fff;
   border-radius: 50%;
   cursor: pointer;
@@ -509,9 +527,10 @@
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
-.modal-section .value-display {
+.vertical-slider-control .value-display {
   font-size: 16px;
   color: #fff;
   font-weight: bold;
   margin-top: 10px;
+  min-height: 20px;
 }

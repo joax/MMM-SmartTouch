@@ -430,6 +430,17 @@ Module.register("MMM-SmartTouch", {
     const allButtonItem = document.createElement("li");
     allButtonItem.className = "li-t all-lights-button";
     
+    // Set initial display
+    this.updateAllLightsButtonDisplay(allButtonItem);
+    
+    allButtonItem.addEventListener("click", () => {
+      this.toggleAllLights();
+    });
+
+    return allButtonItem;
+  },
+
+  updateAllLightsButtonDisplay: function (buttonElement) {
     // Determine if most devices are on or off to decide the action
     const onDevices = this.goveeDevices.filter(d => d.powerState === "on").length;
     const totalDevices = this.goveeDevices.length;
@@ -439,18 +450,20 @@ Module.register("MMM-SmartTouch", {
     const icon = mostlyOn ? "fa-moon-o" : "fa-sun-o";
     const text = mostlyOn ? "Turn All Off" : "Turn All On";
     
-    allButtonItem.innerHTML = `<span class='fa ${icon} fa-lg'></span><br>${text}`;
-    allButtonItem.dataset.action = action;
+    buttonElement.innerHTML = `<span class='fa ${icon} fa-lg'></span><br>${text}`;
+    buttonElement.dataset.action = action;
     
-    allButtonItem.addEventListener("click", () => {
-      this.toggleAllLights(action);
-    });
-
-    return allButtonItem;
+    console.log(`All lights button updated: ${onDevices}/${totalDevices} devices on, action will be: ${action}`);
   },
 
-  toggleAllLights: function (action) {
-    console.log(`Turning all lights ${action}`);
+  toggleAllLights: function () {
+    // Determine action dynamically when button is clicked
+    const onDevices = this.goveeDevices.filter(d => d.powerState === "on").length;
+    const totalDevices = this.goveeDevices.length;
+    const mostlyOn = onDevices > totalDevices / 2;
+    const action = mostlyOn ? "off" : "on";
+    
+    console.log(`Turning all lights ${action} (${onDevices}/${totalDevices} currently on)`);
     this.sendSocketNotification("TOGGLE_ALL_GOVEE_DEVICES", {
       action: action,
       devices: this.goveeDevices
@@ -567,9 +580,9 @@ Module.register("MMM-SmartTouch", {
     const controlsContainer = document.createElement("div");
     controlsContainer.className = "modal-device-controls";
 
-    // Device status and power control
+    // Device status and power control (top section)
     const statusSection = document.createElement("div");
-    statusSection.className = "modal-section";
+    statusSection.className = "modal-status-section";
     
     const statusIcon = device.powerState === "on" ? "fa-lightbulb-o" : "fa-circle-o";
     const statusText = device.powerState === "on" ? "ON" : "OFF";
@@ -591,21 +604,27 @@ Module.register("MMM-SmartTouch", {
     statusSection.appendChild(powerBtn);
     controlsContainer.appendChild(statusSection);
 
-    // Warm control section
-    const warmSection = document.createElement("div");
-    warmSection.className = "modal-section";
-    warmSection.innerHTML = `
-      <h3>Color Temperature</h3>
-      <div class="slider-container">
-        <label>Cool</label>
-        <input type="range" class="modal-warm-slider" min="2000" max="9000" value="${device.colorTemperature || 6500}">
-        <label>Warm</label>
+    // Sliders section (horizontal row with vertical sliders)
+    const slidersSection = document.createElement("div");
+    slidersSection.className = "modal-sliders-section";
+
+    // Color Temperature control (vertical slider)
+    const warmControl = document.createElement("div");
+    warmControl.className = "vertical-slider-control";
+    warmControl.innerHTML = `
+      <h4>Color Temperature</h4>
+      <div class="vertical-slider-container">
+        <label class="slider-label-top">Warm</label>
+        <input type="range" class="modal-warm-slider vertical-slider" 
+               min="2000" max="9000" value="${device.colorTemperature || 6500}" 
+               orient="vertical">
+        <label class="slider-label-bottom">Cool</label>
       </div>
       <div class="value-display">${device.colorTemperature || 6500}K</div>
     `;
     
-    const warmSlider = warmSection.querySelector('.modal-warm-slider');
-    const warmDisplay = warmSection.querySelector('.value-display');
+    const warmSlider = warmControl.querySelector('.modal-warm-slider');
+    const warmDisplay = warmControl.querySelector('.value-display');
     
     warmSlider.addEventListener("input", (e) => {
       warmDisplay.textContent = e.target.value + 'K';
@@ -616,23 +635,23 @@ Module.register("MMM-SmartTouch", {
       this.updateDeviceWarm(device.device, device.model, e.target.value);
     });
 
-    controlsContainer.appendChild(warmSection);
-
-    // Intensity control section
-    const intensitySection = document.createElement("div");
-    intensitySection.className = "modal-section";
-    intensitySection.innerHTML = `
-      <h3>Brightness</h3>
-      <div class="slider-container">
-        <label>Dim</label>
-        <input type="range" class="modal-intensity-slider" min="1" max="100" value="${device.brightness || 100}">
-        <label>Bright</label>
+    // Brightness control (vertical slider)
+    const intensityControl = document.createElement("div");
+    intensityControl.className = "vertical-slider-control";
+    intensityControl.innerHTML = `
+      <h4>Brightness</h4>
+      <div class="vertical-slider-container">
+        <label class="slider-label-top">Bright</label>
+        <input type="range" class="modal-intensity-slider vertical-slider" 
+               min="1" max="100" value="${device.brightness || 100}" 
+               orient="vertical">
+        <label class="slider-label-bottom">Dim</label>
       </div>
       <div class="value-display">${device.brightness || 100}%</div>
     `;
     
-    const intensitySlider = intensitySection.querySelector('.modal-intensity-slider');
-    const intensityDisplay = intensitySection.querySelector('.value-display');
+    const intensitySlider = intensityControl.querySelector('.modal-intensity-slider');
+    const intensityDisplay = intensityControl.querySelector('.value-display');
     
     intensitySlider.addEventListener("input", (e) => {
       intensityDisplay.textContent = e.target.value + '%';
@@ -643,7 +662,9 @@ Module.register("MMM-SmartTouch", {
       this.updateDeviceIntensity(device.device, device.model, e.target.value);
     });
 
-    controlsContainer.appendChild(intensitySection);
+    slidersSection.appendChild(warmControl);
+    slidersSection.appendChild(intensityControl);
+    controlsContainer.appendChild(slidersSection);
 
     return controlsContainer;
   },
@@ -679,7 +700,8 @@ Module.register("MMM-SmartTouch", {
     // Update brightness slider and display
     if (brightness !== undefined) {
       const intensitySlider = modal.querySelector('.modal-intensity-slider');
-      const intensityDisplay = modal.querySelector('.modal-section:last-child .value-display');
+      const intensityControl = modal.querySelector('.vertical-slider-control:nth-child(2)');
+      const intensityDisplay = intensityControl ? intensityControl.querySelector('.value-display') : null;
       if (intensitySlider && intensityDisplay) {
         intensitySlider.value = brightness;
         intensityDisplay.textContent = brightness + '%';
@@ -689,7 +711,8 @@ Module.register("MMM-SmartTouch", {
     // Update color temperature slider and display
     if (colorTemperature !== undefined) {
       const warmSlider = modal.querySelector('.modal-warm-slider');
-      const warmDisplay = modal.querySelector('.modal-section:nth-child(2) .value-display');
+      const warmControl = modal.querySelector('.vertical-slider-control:nth-child(1)');
+      const warmDisplay = warmControl ? warmControl.querySelector('.value-display') : null;
       if (warmSlider && warmDisplay) {
         warmSlider.value = colorTemperature;
         warmDisplay.textContent = colorTemperature + 'K';
@@ -729,6 +752,13 @@ Module.register("MMM-SmartTouch", {
       }
       
       goveeMenuDiv.appendChild(deviceList);
+    }
+  },
+
+  updateAllLightsButtonInMenu: function () {
+    const allButton = document.querySelector('.all-lights-button');
+    if (allButton) {
+      this.updateAllLightsButtonDisplay(allButton);
     }
   },
 
@@ -786,6 +816,8 @@ Module.register("MMM-SmartTouch", {
         this.updateModalValues(payload.device, undefined, undefined, payload.newState);
         // Always refresh menu for power state changes (no expansion conflicts now)
         this.refreshGoveeMenu();
+        // Also update the all lights button to reflect new state
+        this.updateAllLightsButtonInMenu();
       }
     }
 
