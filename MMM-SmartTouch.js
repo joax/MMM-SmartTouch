@@ -344,21 +344,23 @@ Module.register("MMM-SmartTouch", {
   },
 
   toggleDevicePower: function (deviceMac, deviceModel, currentState) {
+    console.log("toggleDevicePower called with:", {deviceMac, deviceModel, currentState});
     this.sendSocketNotification("TOGGLE_GOVEE_DEVICE", {
       device: deviceMac,
       model: deviceModel,
       currentState: currentState
     });
+    console.log("TOGGLE_GOVEE_DEVICE socket notification sent");
   },
 
   updateDeviceWarm: function (deviceMac, deviceModel, colorTemp) {
-    console.log(`Sending color temp update: ${colorTemp}K to device ${deviceMac}`);
-    console.log(`Expanded device: ${this.expandedDeviceMac}`);
+    console.log(`updateDeviceWarm called with: ${colorTemp}K to device ${deviceMac}, model: ${deviceModel}`);
     this.sendSocketNotification("UPDATE_GOVEE_COLOR_TEMP", {
       device: deviceMac,
       model: deviceModel,
       colorTemperature: parseInt(colorTemp)
     });
+    console.log("UPDATE_GOVEE_COLOR_TEMP socket notification sent");
   },
 
   updateDeviceIntensity: function (deviceMac, deviceModel, brightness) {
@@ -610,9 +612,14 @@ Module.register("MMM-SmartTouch", {
     const powerBtn = document.createElement("button");
     powerBtn.className = `modal-power-btn ${device.powerState}`;
     powerBtn.innerHTML = '<span class="fa fa-power-off"></span>';
+    
+    console.log("Power button created:", powerBtn);
+    console.log("Device data for power button:", {device: device.device, model: device.model, state: device.powerState});
+    
     powerBtn.addEventListener("click", (e) => {
-      console.log("Modal power button clicked");
+      console.log("Modal power button clicked - event fired");
       e.stopPropagation();
+      console.log("Calling toggleDevicePower with:", device.device, device.model, device.powerState);
       this.toggleDevicePower(device.device, device.model, device.powerState);
     });
     
@@ -636,17 +643,24 @@ Module.register("MMM-SmartTouch", {
     const warmSlider = warmControl.querySelector('.modal-warm-slider');
     const warmDisplay = warmControl.querySelector('.value-display');
     
-    warmSlider.addEventListener("input", (e) => {
-      console.log("Modal warm slider input event");
-      e.stopPropagation();
-      warmDisplay.textContent = e.target.value + 'K';
-    });
+    console.log("Warm slider element found:", warmSlider);
+    console.log("Warm display element found:", warmDisplay);
     
-    warmSlider.addEventListener("change", (e) => {
-      console.log(`Modal warm slider changed to: ${e.target.value}K for device ${device.device}`);
-      e.stopPropagation();
-      this.updateDeviceWarm(device.device, device.model, e.target.value);
-    });
+    if (warmSlider) {
+      warmSlider.addEventListener("input", (e) => {
+        console.log("Modal warm slider input event");
+        e.stopPropagation();
+        if (warmDisplay) warmDisplay.textContent = e.target.value + 'K';
+      });
+      
+      warmSlider.addEventListener("change", (e) => {
+        console.log(`Modal warm slider changed to: ${e.target.value}K for device ${device.device}`);
+        e.stopPropagation();
+        this.updateDeviceWarm(device.device, device.model, e.target.value);
+      });
+    } else {
+      console.error("Warm slider not found in DOM");
+    }
 
     // Brightness control (right column)
     const intensityControl = document.createElement("div");
@@ -666,17 +680,24 @@ Module.register("MMM-SmartTouch", {
     const intensitySlider = intensityControl.querySelector('.modal-intensity-slider');
     const intensityDisplay = intensityControl.querySelector('.value-display');
     
-    intensitySlider.addEventListener("input", (e) => {
-      console.log("Modal intensity slider input event");
-      e.stopPropagation();
-      intensityDisplay.textContent = e.target.value + '%';
-    });
+    console.log("Intensity slider element found:", intensitySlider);
+    console.log("Intensity display element found:", intensityDisplay);
     
-    intensitySlider.addEventListener("change", (e) => {
-      console.log(`Modal intensity slider changed to: ${e.target.value}% for device ${device.device}`);
-      e.stopPropagation();
-      this.updateDeviceIntensity(device.device, device.model, e.target.value);
-    });
+    if (intensitySlider) {
+      intensitySlider.addEventListener("input", (e) => {
+        console.log("Modal intensity slider input event");
+        e.stopPropagation();
+        if (intensityDisplay) intensityDisplay.textContent = e.target.value + '%';
+      });
+      
+      intensitySlider.addEventListener("change", (e) => {
+        console.log(`Modal intensity slider changed to: ${e.target.value}% for device ${device.device}`);
+        e.stopPropagation();
+        this.updateDeviceIntensity(device.device, device.model, e.target.value);
+      });
+    } else {
+      console.error("Intensity slider not found in DOM");
+    }
 
     // Add all columns to the row
     controlsRow.appendChild(powerControl);
