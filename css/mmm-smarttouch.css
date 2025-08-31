@@ -316,14 +316,31 @@
   width: 220px;
 }
 
-/* Turn All On/Off Button */
-.st-container__govee-menu > ul > li.all-lights-button {
+  /* Turn All On/Off Button */
+  .st-container__govee-menu > ul > li.all-devices-button {
   margin-bottom: 0px;
   font-weight: bold;
   transition: all 0.3s;
 }
 
-.st-container__govee-menu > ul > li.all-lights-button:hover {
+/* Device State Indicators */
+.govee-device.device-on .fa {
+  color: #4CAF50;
+}
+
+.govee-device.device-off .fa {
+  color: #666;
+}
+
+.govee-device.device-on small {
+  color: #4CAF50;
+}
+
+.govee-device.device-off small {
+  color: #999;
+}
+
+.st-container__govee-menu > ul > li.all-devices-button:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
