@@ -462,9 +462,11 @@
 .power-control-column h4,
 .vertical-slider-control h4 {
   margin: 0 0 15px 0;
-  font-size: 16px;
+  font-size: 14px;
   color: #ccc;
   font-weight: normal;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .device-status {

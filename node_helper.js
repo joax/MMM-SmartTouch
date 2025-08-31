@@ -61,7 +61,7 @@ module.exports = NodeHelper.create({
     }
   },
 
-  // Get list of Govee devices
+  // Get list of Govee devices with their capabilities
   getGoveeDevices: async function() {
     if (!this.goveeApiKey) {
       console.error("Govee API key not configured");
@@ -77,8 +77,31 @@ module.exports = NodeHelper.create({
       });
 
       if (response.status === 200 && response.data.data && response.data.data.devices) {
-        console.log(`Found ${response.data.data.devices.length} Govee devices`);
-        return response.data.data.devices;
+        const devices = response.data.data.devices;
+        console.log(`Found ${devices.length} Govee devices`);
+        
+        // Process devices to extract color temperature capabilities
+        const devicesWithCapabilities = devices.map(device => {
+          const processedDevice = { ...device };
+          
+          // Extract color temperature range if available
+          if (device.properties && device.properties.colorTem && device.properties.colorTem.range) {
+            const colorTempRange = device.properties.colorTem.range;
+            processedDevice.colorTempRange = {
+              min: colorTempRange.min || 2000,
+              max: colorTempRange.max || 9000
+            };
+            processedDevice.supportsColorTemp = true;
+            console.log(`Device ${device.device} (${device.model}) supports color temp: ${colorTempRange.min}K - ${colorTempRange.max}K`);
+          } else {
+            processedDevice.supportsColorTemp = false;
+            console.log(`Device ${device.device} (${device.model}) does not support color temperature`);
+          }
+          
+          return processedDevice;
+        });
+        
+        return devicesWithCapabilities;
       } else {
         console.log("No Govee devices found");
         return [];
@@ -245,16 +268,20 @@ module.exports = NodeHelper.create({
     }
 
     if (notification === "UPDATE_GOVEE_COLOR_TEMP") {
-      const { device, model, colorTemperature } = payload;
+      const { device, model, colorTemperature, deviceRange } = payload;
       
       console.log(`Attempting to set color temperature for device ${device} (model: ${model}) to ${colorTemperature}K`);
       
-      // Validate color temperature range (typical Govee range is 2000K-9000K)
-      if (colorTemperature < 2000 || colorTemperature > 9000) {
-        console.error(`Invalid color temperature: ${colorTemperature}K. Must be between 2000K and 9000K`);
+      // Use device-specific range if provided, otherwise use default
+      const minTemp = deviceRange ? deviceRange.min : 2000;
+      const maxTemp = deviceRange ? deviceRange.max : 9000;
+      
+      // Validate color temperature range
+      if (colorTemperature < minTemp || colorTemperature > maxTemp) {
+        console.error(`Invalid color temperature: ${colorTemperature}K. Device ${model} supports ${minTemp}K - ${maxTemp}K`);
         this.sendSocketNotification("GOVEE_DEVICE_ERROR", {
           device: device,
-          error: `Invalid color temperature range: ${colorTemperature}K`
+          error: `Invalid color temperature range: ${colorTemperature}K. This device supports ${minTemp}K - ${maxTemp}K`
         });
         return;
       }

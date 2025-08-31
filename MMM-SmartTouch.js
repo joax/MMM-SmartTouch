@@ -231,11 +231,12 @@ Module.register("MMM-SmartTouch", {
     });
   },
 
-  updateDeviceColorTemperature: function (deviceMac, deviceModel, colorTemp) {
+  updateDeviceColorTemperature: function (deviceMac, deviceModel, colorTemp, deviceRange) {
     this.sendSocketNotification("UPDATE_GOVEE_COLOR_TEMP", {
       device: deviceMac,
       model: deviceModel,
-      colorTemperature: parseInt(colorTemp)
+      colorTemperature: parseInt(colorTemp),
+      deviceRange: deviceRange
     });
   },
 
@@ -535,23 +536,29 @@ Module.register("MMM-SmartTouch", {
     colorTempControl.className = "vertical-slider-control";
     
     // Check if color temperature is supported by this device
-    const isSupported = !this.unsupportedFeatures[device.device] || 
-                       !this.unsupportedFeatures[device.device].includes("colorTemperature");
+    const isSupported = (device.supportsColorTemp !== false) && 
+                       (!this.unsupportedFeatures[device.device] || 
+                        !this.unsupportedFeatures[device.device].includes("colorTemperature"));
+    
+    // Use device-specific range if available
+    const minTemp = device.colorTempRange ? device.colorTempRange.min : 2000;
+    const maxTemp = device.colorTempRange ? device.colorTempRange.max : 9000;
+    const currentTemp = device.colorTemperature || Math.floor((minTemp + maxTemp) / 2);
     
     const disabledClass = isSupported ? "" : " disabled";
     const disabledAttr = isSupported ? "" : " disabled";
-    const title = isSupported ? "Color Temperature" : "Color Temperature (Not Supported)";
+    const title = isSupported ? `Color Temperature (${minTemp}K-${maxTemp}K)` : "Color Temperature (Not Supported)";
     
     colorTempControl.innerHTML = `
       <h4 class="${disabledClass}">${title}</h4>
       <div class="vertical-slider-container">
         <label class="slider-label-top${disabledClass}">Warm</label>
         <input type="range" class="modal-warm-slider vertical-slider${disabledClass}" 
-               min="2000" max="9000" value="${device.colorTemperature || 6500}" 
+               min="${minTemp}" max="${maxTemp}" value="${currentTemp}" 
                orient="vertical"${disabledAttr}>
         <label class="slider-label-bottom${disabledClass}">Cool</label>
       </div>
-      <div class="value-display${disabledClass}">${isSupported ? (device.colorTemperature || 6500) + 'K' : 'N/A'}</div>
+      <div class="value-display${disabledClass}">${isSupported ? currentTemp + 'K' : 'N/A'}</div>
     `;
     
     const slider = colorTempControl.querySelector('.modal-warm-slider');
@@ -565,7 +572,7 @@ Module.register("MMM-SmartTouch", {
       
       slider.addEventListener("change", (e) => {
         e.stopPropagation();
-        this.updateDeviceColorTemperature(device.device, device.model, e.target.value);
+        this.updateDeviceColorTemperature(device.device, device.model, e.target.value, device.colorTempRange);
       });
     } else {
       // Add click handler to show info for disabled slider
