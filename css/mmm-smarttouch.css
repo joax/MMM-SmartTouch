@@ -107,8 +107,8 @@
 }
 
 .st-container__main-menu > ul {
-  padding-left: 10px;
-  padding-right: 10px;
+  padding-left: 0px;
+  padding-right: 0px;
   margin: 0;
   list-style: none;
   flex-direction: column;
