@@ -119,8 +119,8 @@
 
 .st-container__main-menu > ul > li {
   font-size: 12px;
-  padding-top: 10px;
-  padding-bottom: 5px;
+  padding-top: 20px;
+  padding-bottom: 15px;
   border-bottom: 1px solid #666;
 }
 
@@ -173,8 +173,8 @@
 }
 
 .st-container__govee-menu > ul {
-  padding-left: 10px;
-  padding-right: 10px;
+  padding-left: 0px;
+  padding-right: 0px;
   margin: 0;
   list-style: none;
   flex-direction: column;
@@ -185,8 +185,8 @@
 
 .st-container__govee-menu > ul > li {
   font-size: 12px;
-  padding-top: 10px;
-  padding-bottom: 5px;
+  padding-top: 20px;
+  padding-bottom: 15px;
   border-bottom: 1px solid #666;
   cursor: pointer;
 }
