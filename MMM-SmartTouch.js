@@ -283,7 +283,14 @@ Module.register("MMM-SmartTouch", {
     warmSlider.value = device.colorTemperature || 6500;
     warmSlider.addEventListener("change", (e) => {
       e.stopPropagation();
+      console.log(`Warm slider changed to: ${e.target.value}K for device ${device.device}`);
       this.updateDeviceWarm(device.device, device.model, e.target.value);
+      warmGroup.querySelector('.value-display').textContent = e.target.value + 'K';
+    });
+    
+    // Also handle input event for real-time feedback
+    warmSlider.addEventListener("input", (e) => {
+      e.stopPropagation();
       warmGroup.querySelector('.value-display').textContent = e.target.value + 'K';
     });
     warmGroup.insertBefore(warmSlider, warmGroup.querySelector('.value-display'));
@@ -301,7 +308,14 @@ Module.register("MMM-SmartTouch", {
     intensitySlider.value = device.brightness || 100;
     intensitySlider.addEventListener("change", (e) => {
       e.stopPropagation();
+      console.log(`Intensity slider changed to: ${e.target.value}% for device ${device.device}`);
       this.updateDeviceIntensity(device.device, device.model, e.target.value);
+      intensityGroup.querySelector('.value-display').textContent = e.target.value + '%';
+    });
+    
+    // Also handle input event for real-time feedback
+    intensitySlider.addEventListener("input", (e) => {
+      e.stopPropagation();
       intensityGroup.querySelector('.value-display').textContent = e.target.value + '%';
     });
     intensityGroup.insertBefore(intensitySlider, intensityGroup.querySelector('.value-display'));
@@ -329,6 +343,8 @@ Module.register("MMM-SmartTouch", {
   },
 
   updateDeviceWarm: function (deviceMac, deviceModel, colorTemp) {
+    console.log(`Sending color temp update: ${colorTemp}K to device ${deviceMac}`);
+    console.log(`Expanded device: ${this.expandedDeviceMac}`);
     this.sendSocketNotification("UPDATE_GOVEE_COLOR_TEMP", {
       device: deviceMac,
       model: deviceModel,
@@ -555,6 +571,9 @@ Module.register("MMM-SmartTouch", {
     }
 
     if (notification === "GOVEE_DEVICE_STATE_UPDATED") {
+      console.log(`GOVEE_DEVICE_STATE_UPDATED received:`, payload);
+      console.log(`Current expanded device: ${this.expandedDeviceMac}`);
+      
       // Update specific device properties without full menu refresh
       const deviceIndex = this.goveeDevices.findIndex(d => d.device === payload.device);
       if (deviceIndex !== -1) {
@@ -568,6 +587,7 @@ Module.register("MMM-SmartTouch", {
         }
         
         // Update expanded device values in place if this device is currently expanded
+        console.log(`Calling updateExpandedDeviceValues for device ${payload.device}`);
         this.updateExpandedDeviceValues(payload.device, payload.brightness, payload.colorTemperature);
       }
     }

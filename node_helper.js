@@ -241,7 +241,15 @@ module.exports = NodeHelper.create({
       
       console.log(`Setting color temperature for device ${device} to ${colorTemperature}K`)
       
+      // Try both possible command names for color temperature
       this.sendGoveeCommand({ name: "colorTem", value: colorTemperature }, device, model)
+        .then(success => {
+          if (!success) {
+            console.log(`Trying alternative color temperature command format...`);
+            return this.sendGoveeCommand({ name: "colorTemp", value: colorTemperature }, device, model);
+          }
+          return success;
+        })
         .then(success => {
           if (success) {
             console.log(`Color temperature updated successfully`);
