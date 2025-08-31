@@ -15,6 +15,7 @@ Module.register("MMM-SmartTouch", {
     this.currentBrightness = 255; // Default brightness level
     this.goveeDevices = []; // Store Govee devices
     this.currentModalDeviceMac = null; // Track which device modal is currently open
+    this.unsupportedFeatures = {}; // Track which features are unsupported by each device
     this.sendSocketNotification("CONFIG", this.config);
     // Get current brightness level on startup
     this.sendSocketNotification("GET_BRIGHTNESS", {});
@@ -292,6 +293,38 @@ Module.register("MMM-SmartTouch", {
     };
   },
 
+  // ===== USER NOTIFICATIONS =====
+  
+  showNotification: function (title, message, duration = 3000) {
+    // Create notification element
+    const notification = document.createElement("div");
+    notification.className = "govee-notification";
+    notification.innerHTML = `
+      <div class="notification-content">
+        <div class="notification-title">${title}</div>
+        <div class="notification-message">${message}</div>
+      </div>
+    `;
+
+    // Add to DOM
+    document.body.appendChild(notification);
+
+    // Show notification
+    setTimeout(() => {
+      notification.classList.add("show");
+    }, 100);
+
+    // Auto-hide notification
+    setTimeout(() => {
+      notification.classList.remove("show");
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, duration);
+  },
+
 
 
 
@@ -500,30 +533,49 @@ Module.register("MMM-SmartTouch", {
   createModalColorTempControl: function (device) {
     const colorTempControl = document.createElement("div");
     colorTempControl.className = "vertical-slider-control";
+    
+    // Check if color temperature is supported by this device
+    const isSupported = !this.unsupportedFeatures[device.device] || 
+                       !this.unsupportedFeatures[device.device].includes("colorTemperature");
+    
+    const disabledClass = isSupported ? "" : " disabled";
+    const disabledAttr = isSupported ? "" : " disabled";
+    const title = isSupported ? "Color Temperature" : "Color Temperature (Not Supported)";
+    
     colorTempControl.innerHTML = `
-      <h4>Color Temperature</h4>
+      <h4 class="${disabledClass}">${title}</h4>
       <div class="vertical-slider-container">
-        <label class="slider-label-top">Warm</label>
-        <input type="range" class="modal-warm-slider vertical-slider" 
+        <label class="slider-label-top${disabledClass}">Warm</label>
+        <input type="range" class="modal-warm-slider vertical-slider${disabledClass}" 
                min="2000" max="9000" value="${device.colorTemperature || 6500}" 
-               orient="vertical">
-        <label class="slider-label-bottom">Cool</label>
+               orient="vertical"${disabledAttr}>
+        <label class="slider-label-bottom${disabledClass}">Cool</label>
       </div>
-      <div class="value-display">${device.colorTemperature || 6500}K</div>
+      <div class="value-display${disabledClass}">${isSupported ? (device.colorTemperature || 6500) + 'K' : 'N/A'}</div>
     `;
     
     const slider = colorTempControl.querySelector('.modal-warm-slider');
     const display = colorTempControl.querySelector('.value-display');
     
-    slider.addEventListener("input", (e) => {
-      e.stopPropagation();
-      display.textContent = e.target.value + 'K';
-    });
-    
-    slider.addEventListener("change", (e) => {
-      e.stopPropagation();
-      this.updateDeviceColorTemperature(device.device, device.model, e.target.value);
-    });
+    if (isSupported) {
+      slider.addEventListener("input", (e) => {
+        e.stopPropagation();
+        display.textContent = e.target.value + 'K';
+      });
+      
+      slider.addEventListener("change", (e) => {
+        e.stopPropagation();
+        this.updateDeviceColorTemperature(device.device, device.model, e.target.value);
+      });
+    } else {
+      // Add click handler to show info for disabled slider
+      slider.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.showNotification("Feature Not Available", 
+          "Color temperature control is not supported by this device via the API. Use the Govee app instead.", 
+          4000);
+      });
+    }
 
     return colorTempControl;
   },
@@ -740,6 +792,30 @@ Module.register("MMM-SmartTouch", {
       if (updatedDevice) {
         // Update modal values if this device modal is currently open
         this.updateModalValues(payload.device, payload.brightness, payload.colorTemperature);
+      }
+    }
+
+    if (notification === "GOVEE_DEVICE_ERROR") {
+      Log.warn(`Govee device error: ${payload.error}`);
+      
+      // Track unsupported features
+      if (payload.error.includes("Color temperature not supported")) {
+        if (!this.unsupportedFeatures[payload.device]) {
+          this.unsupportedFeatures[payload.device] = [];
+        }
+        this.unsupportedFeatures[payload.device].push("colorTemperature");
+        
+        this.showNotification("Device Limitation", 
+          `Color temperature control is not supported by this device model. Use the Govee app instead.`, 
+          5000);
+      } else if (payload.error.includes("Invalid color temperature")) {
+        this.showNotification("Invalid Range", 
+          `Color temperature must be between 2000K and 9000K.`, 
+          3000);
+      } else {
+        this.showNotification("Device Error", 
+          `Failed to control device: ${payload.error}`, 
+          4000);
       }
     }
   },

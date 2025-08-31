@@ -33,22 +33,30 @@ module.exports = NodeHelper.create({
       return false;
     }
 
+    const requestData = {
+      device: deviceMac,
+      model: deviceModel,
+      cmd: command
+    };
+
+    console.log(`Sending Govee API request:`, JSON.stringify(requestData, null, 2));
+
     try {
-      const response = await axios.put(this.goveeApiUrl, {
-        device: deviceMac,
-        model: deviceModel,
-        cmd: command
-      }, {
+      const response = await axios.put(this.goveeApiUrl, requestData, {
         headers: {
           'Govee-API-Key': this.goveeApiKey,
           'Content-Type': 'application/json'
         }
       });
 
-      console.log(`Govee API response: ${response.status} - ${response.data.message || 'Success'}`);
+      console.log(`Govee API response: ${response.status} - ${JSON.stringify(response.data)}`);
       return response.status === 200;
     } catch (error) {
       console.error(`Govee API error: ${error.message}`);
+      if (error.response) {
+        console.error(`Response status: ${error.response.status}`);
+        console.error(`Response data:`, JSON.stringify(error.response.data, null, 2));
+      }
       return false;
     }
   },
@@ -239,27 +247,45 @@ module.exports = NodeHelper.create({
     if (notification === "UPDATE_GOVEE_COLOR_TEMP") {
       const { device, model, colorTemperature } = payload;
       
-      console.log(`Setting color temperature for device ${device} to ${colorTemperature}K`)
+      console.log(`Attempting to set color temperature for device ${device} (model: ${model}) to ${colorTemperature}K`);
       
-      // Try both possible command names for color temperature
+      // Validate color temperature range (typical Govee range is 2000K-9000K)
+      if (colorTemperature < 2000 || colorTemperature > 9000) {
+        console.error(`Invalid color temperature: ${colorTemperature}K. Must be between 2000K and 9000K`);
+        this.sendSocketNotification("GOVEE_DEVICE_ERROR", {
+          device: device,
+          error: `Invalid color temperature range: ${colorTemperature}K`
+        });
+        return;
+      }
+      
+      // Try the standard color temperature command
       this.sendGoveeCommand({ name: "colorTem", value: colorTemperature }, device, model)
         .then(success => {
-          if (!success) {
-            console.log(`Trying alternative color temperature command format...`);
-            return this.sendGoveeCommand({ name: "colorTemp", value: colorTemperature }, device, model);
-          }
-          return success;
-        })
-        .then(success => {
           if (success) {
-            console.log(`Color temperature updated successfully`);
+            console.log(`Color temperature updated successfully to ${colorTemperature}K`);
             this.sendSocketNotification("GOVEE_DEVICE_STATE_UPDATED", {
               device: device,
               colorTemperature: colorTemperature
             });
           } else {
-            console.error(`Failed to update color temperature for device ${device}`);
+            // Color temperature command failed - device likely doesn't support it
+            console.warn(`Device ${device} (model: ${model}) does not support color temperature control via API`);
+            console.warn(`This is a known limitation with some Govee models. Color temperature may only be available through the Govee app.`);
+            
+            this.sendSocketNotification("GOVEE_DEVICE_ERROR", {
+              device: device,
+              error: "Color temperature not supported by this device model",
+              suggestion: "Use the Govee app to change color temperature"
+            });
           }
+        })
+        .catch(error => {
+          console.error(`Color temperature update error for device ${device}: ${error.message}`);
+          this.sendSocketNotification("GOVEE_DEVICE_ERROR", {
+            device: device,
+            error: `API error: ${error.message}`
+          });
         });
     }
 
