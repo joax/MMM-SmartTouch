@@ -358,6 +358,24 @@ Module.register("MMM-SmartTouch", {
     buttonElement.dataset.action = action;
   },
 
+  // ===== SET ALL LIGHTS BUTTON =====
+  
+  createSetAllLightsButton: function () {
+    const setAllButtonItem = document.createElement("li");
+    setAllButtonItem.className = "li-t set-all-lights-button";
+    setAllButtonItem.innerHTML = `
+      <span class='fa fa-sliders fa-lg'></span>
+      <br>Set All Lights
+      <br><small>Configure warm & intensity</small>
+    `;
+    
+    setAllButtonItem.addEventListener("click", () => {
+      this.openSetAllLightsModal();
+    });
+
+    return setAllButtonItem;
+  },
+
   createGoveeMenuDiv: function () {
     const goveeMenuDiv = document.createElement("div");
     goveeMenuDiv.className = "st-container__govee-menu";
@@ -374,6 +392,10 @@ Module.register("MMM-SmartTouch", {
       // Add "Turn All On/Off" button at the top
       const allButton = this.createAllDevicesButton();
       deviceList.appendChild(allButton);
+      
+      // Add "Set All Lights" button
+      const setAllButton = this.createSetAllLightsButton();
+      deviceList.appendChild(setAllButton);
       
       // Add separator
       const separator = document.createElement("li");
@@ -471,7 +493,239 @@ Module.register("MMM-SmartTouch", {
     modalBody.innerHTML = '';
   },
 
+  // ===== SET ALL LIGHTS MODAL =====
 
+  openSetAllLightsModal: function () {
+    let modal = document.getElementById("set-all-lights-modal");
+    if (!modal) {
+      modal = this.createSetAllLightsModal();
+      document.body.appendChild(modal);
+    }
+
+    // Set default values (average of current devices or reasonable defaults)
+    const avgSettings = this.getAverageDeviceSettings();
+    
+    // Update modal controls with average values
+    const warmSlider = modal.querySelector('.set-all-warm-slider');
+    const intensitySlider = modal.querySelector('.set-all-intensity-slider');
+    const warmDisplay = modal.querySelector('.warm-control .value-display');
+    const intensityDisplay = modal.querySelector('.intensity-control .value-display');
+    
+    if (warmSlider && warmDisplay) {
+      warmSlider.value = avgSettings.colorTemperature;
+      warmDisplay.textContent = avgSettings.colorTemperature + 'K';
+    }
+    
+    if (intensitySlider && intensityDisplay) {
+      intensitySlider.value = avgSettings.brightness;
+      intensityDisplay.textContent = avgSettings.brightness + '%';
+    }
+
+    modal.style.display = "flex";
+  },
+
+  closeSetAllLightsModal: function () {
+    const modal = document.getElementById("set-all-lights-modal");
+    if (modal) {
+      modal.style.display = "none";
+    }
+  },
+
+  createSetAllLightsModal: function () {
+    const modal = document.createElement("div");
+    modal.className = "set-all-lights-modal";
+    modal.id = "set-all-lights-modal";
+    modal.style.display = "none";
+
+    const modalContent = document.createElement("div");
+    modalContent.className = "modal-content";
+
+    // Modal header
+    const modalHeader = document.createElement("div");
+    modalHeader.className = "modal-header";
+    modalHeader.innerHTML = `
+      <h3>Set All Lights</h3>
+      <span class="modal-close">&times;</span>
+    `;
+
+    // Modal body with controls
+    const modalBody = document.createElement("div");
+    modalBody.className = "modal-body";
+    modalBody.appendChild(this.createSetAllModalControls());
+
+    // Modal footer with apply button
+    const modalFooter = document.createElement("div");
+    modalFooter.className = "modal-footer";
+    modalFooter.innerHTML = `
+      <button class="apply-to-all-btn">Apply to All Lights</button>
+    `;
+
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modalContent.appendChild(modalFooter);
+    modal.appendChild(modalContent);
+
+    // Event listeners
+    const closeBtn = modal.querySelector('.modal-close');
+    closeBtn.addEventListener('click', () => this.closeSetAllLightsModal());
+
+    const applyBtn = modal.querySelector('.apply-to-all-btn');
+    applyBtn.addEventListener('click', () => this.applySettingsToAllLights());
+
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        this.closeSetAllLightsModal();
+      }
+    });
+
+    return modal;
+  },
+
+  createSetAllModalControls: function () {
+    const controlsContainer = document.createElement("div");
+    controlsContainer.className = "set-all-modal-controls";
+
+    const controlsRow = document.createElement("div");
+    controlsRow.className = "set-all-controls-row";
+
+    // Get device range constraints (use most restrictive range)
+    const deviceRanges = this.getDeviceRangeConstraints();
+
+    // Color Temperature Control
+    const colorTempControl = document.createElement("div");
+    colorTempControl.className = "vertical-slider-control warm-control";
+    colorTempControl.innerHTML = `
+      <h4>Color Temperature (${deviceRanges.colorTemp.min}K-${deviceRanges.colorTemp.max}K)</h4>
+      <div class="vertical-slider-container">
+        <label class="slider-label-top">Warm</label>
+        <input type="range" class="set-all-warm-slider vertical-slider" 
+               min="${deviceRanges.colorTemp.min}" max="${deviceRanges.colorTemp.max}" value="${deviceRanges.colorTemp.default}" 
+               orient="vertical">
+        <label class="slider-label-bottom">Cool</label>
+      </div>
+      <div class="value-display">${deviceRanges.colorTemp.default}K</div>
+    `;
+
+    // Brightness Control
+    const brightnessControl = document.createElement("div");
+    brightnessControl.className = "vertical-slider-control intensity-control";
+    brightnessControl.innerHTML = `
+      <h4>Intensity</h4>
+      <div class="vertical-slider-container">
+        <label class="slider-label-top">Bright</label>
+        <input type="range" class="set-all-intensity-slider vertical-slider" 
+               min="1" max="100" value="75" orient="vertical">
+        <label class="slider-label-bottom">Dim</label>
+      </div>
+      <div class="value-display">75%</div>
+    `;
+
+    // Add event listeners for real-time updates
+    const warmSlider = colorTempControl.querySelector('.set-all-warm-slider');
+    const warmDisplay = colorTempControl.querySelector('.value-display');
+    const intensitySlider = brightnessControl.querySelector('.set-all-intensity-slider');
+    const intensityDisplay = brightnessControl.querySelector('.value-display');
+
+    warmSlider.addEventListener("input", (e) => {
+      e.stopPropagation();
+      warmDisplay.textContent = e.target.value + 'K';
+    });
+
+    intensitySlider.addEventListener("input", (e) => {
+      e.stopPropagation();
+      intensityDisplay.textContent = e.target.value + '%';
+    });
+
+    controlsRow.appendChild(colorTempControl);
+    controlsRow.appendChild(brightnessControl);
+    controlsContainer.appendChild(controlsRow);
+
+    return controlsContainer;
+  },
+
+  getAverageDeviceSettings: function () {
+    if (this.goveeDevices.length === 0) {
+      return {
+        brightness: 75,
+        colorTemperature: 4000
+      };
+    }
+
+    let totalBrightness = 0;
+    let totalColorTemp = 0;
+    let validDevices = 0;
+
+    this.goveeDevices.forEach(device => {
+      if (device.brightness && device.colorTemperature) {
+        totalBrightness += device.brightness;
+        totalColorTemp += device.colorTemperature;
+        validDevices++;
+      }
+    });
+
+    if (validDevices === 0) {
+      return {
+        brightness: 75,
+        colorTemperature: 4000
+      };
+    }
+
+    return {
+      brightness: Math.round(totalBrightness / validDevices),
+      colorTemperature: Math.round(totalColorTemp / validDevices)
+    };
+  },
+
+  getDeviceRangeConstraints: function () {
+    let minColorTemp = 2000;
+    let maxColorTemp = 9000;
+
+    // Find the most restrictive range across all devices
+    this.goveeDevices.forEach(device => {
+      if (device.colorTempRange) {
+        minColorTemp = Math.max(minColorTemp, device.colorTempRange.min);
+        maxColorTemp = Math.min(maxColorTemp, device.colorTempRange.max);
+      }
+    });
+
+    return {
+      colorTemp: {
+        min: minColorTemp,
+        max: maxColorTemp,
+        default: Math.floor((minColorTemp + maxColorTemp) / 2)
+      }
+    };
+  },
+
+  applySettingsToAllLights: function () {
+    const modal = document.getElementById("set-all-lights-modal");
+    if (!modal) return;
+
+    const warmSlider = modal.querySelector('.set-all-warm-slider');
+    const intensitySlider = modal.querySelector('.set-all-intensity-slider');
+
+    if (!warmSlider || !intensitySlider) return;
+
+    const colorTemperature = parseInt(warmSlider.value);
+    const brightness = parseInt(intensitySlider.value);
+
+    Log.info(`Applying settings to all lights: ${colorTemperature}K, ${brightness}%`);
+
+    // Send to backend to apply to all devices
+    this.sendSocketNotification("SET_ALL_GOVEE_DEVICES", {
+      colorTemperature: colorTemperature,
+      brightness: brightness
+    });
+
+    // Close modal
+    this.closeSetAllLightsModal();
+
+    // Show notification
+    this.showNotification("Settings Applied", 
+      `Applied ${colorTemperature}K warm, ${brightness}% intensity to all lights`, 
+      3000);
+  },
 
   // ===== MODAL DEVICE CONTROLS =====
   
@@ -690,6 +944,10 @@ Module.register("MMM-SmartTouch", {
         const allButton = this.createAllDevicesButton();
         deviceList.appendChild(allButton);
         
+        // Add "Set All Lights" button
+        const setAllButton = this.createSetAllLightsButton();
+        deviceList.appendChild(setAllButton);
+        
         // Add separator
         const separator = document.createElement("li");
         separator.className = "menu-separator";
@@ -853,6 +1111,31 @@ Module.register("MMM-SmartTouch", {
           `Failed to control device: ${payload.error}`, 
           4000);
       }
+    }
+
+    if (notification === "ALL_GOVEE_DEVICES_SET") {
+      Log.info(`Set all devices completed: ${payload.colorTempSuccesses}/${payload.totalDevices} color temp, ${payload.brightnessSuccesses}/${payload.totalDevices} brightness`);
+      
+      // Update device states based on results
+      payload.results.forEach(result => {
+        if (result.colorTempSuccess || result.brightnessSuccess) {
+          const updateData = {};
+          if (result.colorTempSuccess) {
+            updateData.colorTemperature = payload.colorTemperature;
+          }
+          if (result.brightnessSuccess) {
+            updateData.brightness = payload.brightness;
+          }
+          this.updateDeviceState(result.device, updateData);
+        }
+      });
+
+      // Show success notification
+      const successMessage = `${payload.colorTempSuccesses}/${payload.totalDevices} lights updated with color temperature, ${payload.brightnessSuccesses}/${payload.totalDevices} with brightness`;
+      this.showNotification("Settings Applied", successMessage, 4000);
+      
+      // Refresh menu to show any updated states
+      this.refreshGoveeMenu();
     }
   },
 
