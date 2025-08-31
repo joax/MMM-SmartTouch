@@ -127,3 +127,78 @@
 .st-container__main-menu > ul > li:last-child {
   border: 0;
 }
+
+/* Govee Toggle Button */
+.st-container__govee-toggle {
+  width: 70px;
+  height: 70px;
+  margin: 0 0 0 20px;
+  cursor: pointer;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: visible !important;
+}
+
+.st-container__govee-toggle span {
+  color: #eee;
+  transition: all 0.3s;
+}
+
+.st-container__govee-toggle.show span {
+  color: #ffd700;
+}
+
+/* Govee Menu (Left Side) */
+.st-container__govee-menu {
+  width: 0;
+  position: fixed;
+  z-index: 1;
+  top: 20%;
+  left: -2px;
+  background: rgba(0, 0, 0, 0.9);
+  overflow-x: hidden;
+  transition: all ease 0.5s;
+  color: white;
+  border-radius: 0 10px 10px 0;
+  border: 2px solid #eee;
+  border-left: 0;
+  visibility: visible;
+}
+
+.st-container__govee-menu.show {
+  width: 150px;
+  left: 0;
+}
+
+.st-container__govee-menu > ul {
+  padding-left: 10px;
+  padding-right: 10px;
+  margin: 0;
+  list-style: none;
+  flex-direction: column;
+  text-align: center;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.st-container__govee-menu > ul > li {
+  font-size: 12px;
+  padding-top: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #666;
+  cursor: pointer;
+}
+
+.st-container__govee-menu > ul > li:last-child {
+  border: 0;
+}
+
+.st-container__govee-menu > ul > li:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.st-container__govee-menu > ul > li.govee-device:hover {
+  background: rgba(255, 215, 0, 0.2);
+}

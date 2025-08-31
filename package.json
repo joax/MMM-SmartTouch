@@ -1,0 +1,26 @@
+{
+  "name": "mmm-smarttouch",
+  "version": "1.0.0",
+  "description": "A module for controlling your MagicMirror using a touchscreen interface with brightness and Govee light controls",
+  "main": "MMM-SmartTouch.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EbenKouao/MMM-SmartTouch.git"
+  },
+  "keywords": [
+    "magicmirror",
+    "touchscreen",
+    "govee",
+    "lights",
+    "brightness"
+  ],
+  "author": "SmartBuilds.io - Pratik and Eben",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "axios": "^1.6.0"
+  }
+}

@@ -13,9 +13,12 @@ Module.register("MMM-SmartTouch", {
   start: function () {
     Log.info(this.name + " has started...");
     this.currentBrightness = 255; // Default brightness level
+    this.goveeDevices = []; // Store Govee devices
     this.sendSocketNotification("CONFIG", this.config);
     // Get current brightness level on startup
     this.sendSocketNotification("GET_BRIGHTNESS", {});
+    // Get Govee devices on startup
+    this.sendSocketNotification("GET_GOVEE_DEVICES", {});
   },
 
   getStyles: function () {
@@ -64,6 +67,14 @@ Module.register("MMM-SmartTouch", {
     mainMenuDiv.classList.toggle('show')
   },
 
+  toggleGoveeMenu: function () {
+    const goveeToggleDiv = document.getElementById("st-govee-toggle")
+    goveeToggleDiv.classList.toggle('show');
+
+    const goveeMenuDiv = document.getElementById("st-govee-menu")
+    goveeMenuDiv.classList.toggle('show')
+  },
+
   createMenuToggleButtonDiv: function () {
     const menuToggleButtonDiv = document.createElement("div");
     menuToggleButtonDiv.className = "st-container__menu-toggle";
@@ -85,6 +96,20 @@ Module.register("MMM-SmartTouch", {
     menuToggleButtonDiv.addEventListener("click", () => this.toggleSideMenu());
 
     return menuToggleButtonDiv;
+  },
+
+  createGoveeToggleButtonDiv: function () {
+    const goveeToggleButtonDiv = document.createElement("div");
+    goveeToggleButtonDiv.className = "st-container__govee-toggle";
+    goveeToggleButtonDiv.id = "st-govee-toggle";
+
+    const lightbulbIcon = document.createElement("span");
+    lightbulbIcon.className = "fa fa-lightbulb-o fa-2x";
+    
+    goveeToggleButtonDiv.appendChild(lightbulbIcon);
+    goveeToggleButtonDiv.addEventListener("click", () => this.toggleGoveeMenu());
+
+    return goveeToggleButtonDiv;
   },
 
   createShutdownButton: function () {
@@ -139,6 +164,8 @@ Module.register("MMM-SmartTouch", {
     return brightnessDownButtonItem
   },
 
+
+
   createMainMenuDiv: function () {
     const mainMenuDiv = document.createElement("div");
     mainMenuDiv.className = "st-container__main-menu";
@@ -160,6 +187,75 @@ Module.register("MMM-SmartTouch", {
     return mainMenuDiv;
   },
 
+  createGoveeDeviceButton: function (device) {
+    const deviceButtonItem = document.createElement("li");
+    const statusIcon = device.powerState === "on" ? "fa-lightbulb-o" : "fa-circle-o";
+    deviceButtonItem.innerHTML = `<span class='fa ${statusIcon} fa-lg'></span>`
+        + "<br>" + device.deviceName;
+    deviceButtonItem.className = "li-t govee-device"
+    deviceButtonItem.dataset.deviceMac = device.device;
+    deviceButtonItem.dataset.deviceModel = device.model;
+
+    // Toggle device when clicked
+    deviceButtonItem.addEventListener("click", () => {
+      this.sendSocketNotification("TOGGLE_GOVEE_DEVICE", {
+        device: device.device,
+        model: device.model,
+        currentState: device.powerState
+      });
+    });
+
+    return deviceButtonItem;
+  },
+
+  createGoveeMenuDiv: function () {
+    const goveeMenuDiv = document.createElement("div");
+    goveeMenuDiv.className = "st-container__govee-menu";
+    goveeMenuDiv.id = "st-govee-menu";
+
+    const deviceList = document.createElement("ul");
+    
+    if (this.goveeDevices.length === 0) {
+      const noDevicesItem = document.createElement("li");
+      noDevicesItem.innerHTML = "<span class='fa fa-exclamation-triangle fa-lg'></span><br>No Devices";
+      noDevicesItem.className = "li-t";
+      deviceList.appendChild(noDevicesItem);
+    } else {
+      this.goveeDevices.forEach(device => {
+        const deviceButton = this.createGoveeDeviceButton(device);
+        deviceList.appendChild(deviceButton);
+      });
+    }
+
+    goveeMenuDiv.appendChild(deviceList);
+    return goveeMenuDiv;
+  },
+
+  refreshGoveeMenu: function () {
+    const goveeMenuDiv = document.getElementById("st-govee-menu");
+    if (goveeMenuDiv) {
+      // Clear existing content
+      goveeMenuDiv.innerHTML = '';
+      
+      // Create new device list with proper event listeners
+      const deviceList = document.createElement("ul");
+      
+      if (this.goveeDevices.length === 0) {
+        const noDevicesItem = document.createElement("li");
+        noDevicesItem.innerHTML = "<span class='fa fa-exclamation-triangle fa-lg'></span><br>No Devices";
+        noDevicesItem.className = "li-t";
+        deviceList.appendChild(noDevicesItem);
+      } else {
+        this.goveeDevices.forEach(device => {
+          const deviceButton = this.createGoveeDeviceButton(device);
+          deviceList.appendChild(deviceButton);
+        });
+      }
+      
+      goveeMenuDiv.appendChild(deviceList);
+    }
+  },
+
   getDom: function () {
     // Initial standby state
     document.body.className = "st-standby show";
@@ -172,8 +268,14 @@ Module.register("MMM-SmartTouch", {
     const menuToggleButton = this.createMenuToggleButtonDiv();
     container.appendChild(menuToggleButton);
 
+    const goveeToggleButton = this.createGoveeToggleButtonDiv();
+    container.appendChild(goveeToggleButton);
+
     const mainMenu = this.createMainMenuDiv();
     document.body.appendChild(mainMenu);
+
+    const goveeMenu = this.createGoveeMenuDiv();
+    document.body.appendChild(goveeMenu);
 
     return container;
   },
@@ -186,6 +288,22 @@ Module.register("MMM-SmartTouch", {
     if (notification === "BRIGHTNESS_CHANGED") {
       this.currentBrightness = payload;
       Log.info(`Brightness changed to: ${this.currentBrightness}`);
+    }
+    
+    if (notification === "GOVEE_DEVICES_LIST") {
+      this.goveeDevices = payload;
+      Log.info(`Received ${this.goveeDevices.length} Govee devices`);
+      this.refreshGoveeMenu();
+    }
+
+    if (notification === "GOVEE_DEVICE_TOGGLED") {
+      Log.info(`Device ${payload.device} toggled to: ${payload.newState}`);
+      // Update the device state in our local array
+      const deviceIndex = this.goveeDevices.findIndex(d => d.device === payload.device);
+      if (deviceIndex !== -1) {
+        this.goveeDevices[deviceIndex].powerState = payload.newState;
+        this.refreshGoveeMenu();
+      }
     }
   },
 
