@@ -130,11 +130,40 @@ module.exports = NodeHelper.create({
       if (response.status === 200 && response.data.data) {
         const state = response.data.data;
         console.log(`Device ${deviceMac} state:`, state);
-        return {
-          powerState: state.powerState,
-          brightness: state.brightness,
-          colorTemperature: state.color?.colorTemInKelvin || null
-        };
+        
+        // Parse properties array format
+        if (state.properties && Array.isArray(state.properties)) {
+          const properties = state.properties;
+          
+          // Find power state
+          const powerProp = properties.find(p => p.powerState !== undefined);
+          const powerState = powerProp ? powerProp.powerState : "unknown";
+          
+          // Find brightness
+          const brightnessProp = properties.find(p => p.brightness !== undefined);
+          const brightness = brightnessProp ? brightnessProp.brightness : 50;
+          
+          // Find color temperature (may not be present for all devices)
+          const colorTempProp = properties.find(p => p.colorTem !== undefined || p.colorTemp !== undefined);
+          const colorTemperature = colorTempProp ? (colorTempProp.colorTem || colorTempProp.colorTemp) : 6500;
+          
+          const parsedState = {
+            powerState: powerState,
+            brightness: brightness,
+            colorTemperature: colorTemperature
+          };
+          
+          console.log(`Parsed state for ${deviceMac}: power=${parsedState.powerState}, brightness=${parsedState.brightness}%, colorTemp=${parsedState.colorTemperature}K`);
+          
+          return parsedState;
+        } else {
+          // Fallback for different response format
+          return {
+            powerState: state.powerState || "unknown",
+            brightness: state.brightness || 50,
+            colorTemperature: state.color?.colorTemInKelvin || 6500
+          };
+        }
       } else {
         console.log(`No state data for device ${deviceMac}`);
         return null;

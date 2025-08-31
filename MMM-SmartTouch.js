@@ -210,6 +210,8 @@ Module.register("MMM-SmartTouch", {
     const statusIcon = device.powerState === "on" ? "fa-lightbulb-o" : "fa-circle-o";
     const statusClass = device.powerState === "on" ? "device-on" : "device-off";
     
+    Log.info(`Updating button display for ${device.deviceName}: powerState=${device.powerState}, icon=${statusIcon}, class=${statusClass}`);
+    
     buttonElement.innerHTML = `<span class='fa ${statusIcon} fa-lg ${statusClass}'></span>`
         + "<br>" + device.deviceName
         + "<br><small class='" + statusClass + "'>" + (device.powerState === "on" ? "ON" : "OFF") + "</small>";
@@ -768,7 +770,7 @@ Module.register("MMM-SmartTouch", {
       
       // Log device states for debugging
       this.goveeDevices.forEach(device => {
-        Log.info(`Device ${device.deviceName} (${device.device}): ${device.powerState || 'unknown'}`);
+        Log.info(`Frontend received device ${device.deviceName} (${device.device}): power=${device.powerState || 'unknown'}, brightness=${device.brightness || 'unknown'}%, colorTemp=${device.colorTemperature || 'unknown'}K`);
       });
     }
 
