@@ -555,26 +555,32 @@ Module.register("MMM-SmartTouch", {
     // Update modal title with device name
     modalTitle.textContent = `${device.deviceName} Configuration`;
     
-    // Clear previous content
-    modalBody.innerHTML = '';
+    // Store current device for updates
+    this.currentModalDevice = device;
     
-    // Create device controls for modal
+    // Always clear and recreate controls to ensure fresh event listeners
+    modalBody.innerHTML = '';
+    console.log("Creating fresh modal controls with new event listeners");
     const deviceControls = this.createModalDeviceControls(device);
     modalBody.appendChild(deviceControls);
     
     // Show modal
     modal.style.display = "flex";
-    
-    // Store current device for updates
-    this.currentModalDevice = device;
   },
 
   closeLightModal: function () {
     console.log("Closing light modal");
     const modal = document.getElementById("light-config-modal");
+    const modalBody = document.getElementById("modal-body-content");
+    
     modal.style.display = "none";
     this.currentModalDevice = null;
+    
+    // Clear modal content to ensure fresh controls next time
+    modalBody.innerHTML = '';
   },
+
+
 
   createModalDeviceControls: function (device) {
     const controlsContainer = document.createElement("div");
@@ -604,7 +610,9 @@ Module.register("MMM-SmartTouch", {
     const powerBtn = document.createElement("button");
     powerBtn.className = `modal-power-btn ${device.powerState}`;
     powerBtn.innerHTML = '<span class="fa fa-power-off"></span>';
-    powerBtn.addEventListener("click", () => {
+    powerBtn.addEventListener("click", (e) => {
+      console.log("Modal power button clicked");
+      e.stopPropagation();
       this.toggleDevicePower(device.device, device.model, device.powerState);
     });
     
@@ -629,11 +637,14 @@ Module.register("MMM-SmartTouch", {
     const warmDisplay = warmControl.querySelector('.value-display');
     
     warmSlider.addEventListener("input", (e) => {
+      console.log("Modal warm slider input event");
+      e.stopPropagation();
       warmDisplay.textContent = e.target.value + 'K';
     });
     
     warmSlider.addEventListener("change", (e) => {
       console.log(`Modal warm slider changed to: ${e.target.value}K for device ${device.device}`);
+      e.stopPropagation();
       this.updateDeviceWarm(device.device, device.model, e.target.value);
     });
 
@@ -656,11 +667,14 @@ Module.register("MMM-SmartTouch", {
     const intensityDisplay = intensityControl.querySelector('.value-display');
     
     intensitySlider.addEventListener("input", (e) => {
+      console.log("Modal intensity slider input event");
+      e.stopPropagation();
       intensityDisplay.textContent = e.target.value + '%';
     });
     
     intensitySlider.addEventListener("change", (e) => {
       console.log(`Modal intensity slider changed to: ${e.target.value}% for device ${device.device}`);
+      e.stopPropagation();
       this.updateDeviceIntensity(device.device, device.model, e.target.value);
     });
 
@@ -840,7 +854,6 @@ Module.register("MMM-SmartTouch", {
 
     if (notification === "GOVEE_DEVICE_STATE_UPDATED") {
       console.log(`GOVEE_DEVICE_STATE_UPDATED received:`, payload);
-      console.log(`Current expanded device: ${this.expandedDeviceMac}`);
       
       // Update specific device properties without full menu refresh
       const deviceIndex = this.goveeDevices.findIndex(d => d.device === payload.device);
