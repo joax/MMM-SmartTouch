@@ -164,5 +164,64 @@ module.exports = NodeHelper.create({
           }
         });
     }
+
+    if (notification === "UPDATE_GOVEE_COLOR_TEMP") {
+      const { device, model, colorTemperature } = payload;
+      
+      console.log(`Setting color temperature for device ${device} to ${colorTemperature}K`)
+      
+      this.sendGoveeCommand({ name: "colorTem", value: colorTemperature }, device, model)
+        .then(success => {
+          if (success) {
+            console.log(`Color temperature updated successfully`);
+          } else {
+            console.error(`Failed to update color temperature for device ${device}`);
+          }
+        });
+    }
+
+    if (notification === "UPDATE_GOVEE_BRIGHTNESS") {
+      const { device, model, brightness } = payload;
+      
+      console.log(`Setting brightness for device ${device} to ${brightness}%`)
+      
+      this.sendGoveeCommand({ name: "brightness", value: brightness }, device, model)
+        .then(success => {
+          if (success) {
+            console.log(`Brightness updated successfully`);
+          } else {
+            console.error(`Failed to update brightness for device ${device}`);
+          }
+        });
+    }
+
+    if (notification === "TOGGLE_ALL_GOVEE_DEVICES") {
+      const { action, devices } = payload;
+      
+      console.log(`Turning all ${devices.length} devices ${action}`)
+      
+      // Process all devices in parallel
+      const promises = devices.map(device => {
+        return this.sendGoveeCommand({ name: "turn", value: action }, device.device, device.model)
+          .then(success => {
+            if (success) {
+              console.log(`Device ${device.deviceName} turned ${action}`);
+              return { device: device.device, success: true, newState: action };
+            } else {
+              console.error(`Failed to turn ${action} device ${device.deviceName}`);
+              return { device: device.device, success: false, newState: device.powerState };
+            }
+          });
+      });
+
+      // Wait for all commands to complete
+      Promise.all(promises).then(results => {
+        console.log(`All devices command completed. ${results.filter(r => r.success).length}/${results.length} succeeded`);
+        this.sendSocketNotification("ALL_GOVEE_DEVICES_TOGGLED", { 
+          action: action,
+          results: results
+        });
+      });
+    }
   },
 });

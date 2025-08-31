@@ -195,17 +195,176 @@ Module.register("MMM-SmartTouch", {
     deviceButtonItem.className = "li-t govee-device"
     deviceButtonItem.dataset.deviceMac = device.device;
     deviceButtonItem.dataset.deviceModel = device.model;
+    deviceButtonItem.dataset.expanded = "false";
 
-    // Toggle device when clicked
+    // Toggle expanded controls when clicked
     deviceButtonItem.addEventListener("click", () => {
-      this.sendSocketNotification("TOGGLE_GOVEE_DEVICE", {
-        device: device.device,
-        model: device.model,
-        currentState: device.powerState
-      });
+      this.toggleDeviceControls(deviceButtonItem, device);
     });
 
     return deviceButtonItem;
+  },
+
+  toggleDeviceControls: function (deviceElement, device) {
+    const isExpanded = deviceElement.dataset.expanded === "true";
+    const goveeMenu = document.getElementById("st-govee-menu");
+    
+    if (isExpanded) {
+      // Collapse - remove controls and restore original content
+      this.collapseDeviceControls(deviceElement, device);
+      // Check if any devices are still expanded
+      const hasExpanded = goveeMenu.querySelector('.expanded');
+      if (!hasExpanded) {
+        goveeMenu.classList.remove('has-expanded');
+      }
+    } else {
+      // Collapse any other expanded devices first
+      const otherExpanded = goveeMenu.querySelectorAll('.expanded');
+      otherExpanded.forEach(el => {
+        const deviceMac = el.dataset.deviceMac;
+        const deviceObj = this.goveeDevices.find(d => d.device === deviceMac);
+        if (deviceObj) {
+          this.collapseDeviceControls(el, deviceObj);
+        }
+      });
+      
+      // Expand this device
+      this.expandDeviceControls(deviceElement, device);
+      goveeMenu.classList.add('has-expanded');
+    }
+  },
+
+  collapseDeviceControls: function (deviceElement, device) {
+    const statusIcon = device.powerState === "on" ? "fa-lightbulb-o" : "fa-circle-o";
+    deviceElement.innerHTML = `<span class='fa ${statusIcon} fa-lg'></span>`
+        + "<br>" + device.deviceName;
+    deviceElement.dataset.expanded = "false";
+    deviceElement.classList.remove("expanded");
+  },
+
+  expandDeviceControls: function (deviceElement, device) {
+    const statusIcon = device.powerState === "on" ? "fa-lightbulb-o" : "fa-circle-o";
+    
+    // Create the expanded content structure
+    const deviceHeader = document.createElement("div");
+    deviceHeader.className = "device-header";
+    deviceHeader.innerHTML = `<span class='fa ${statusIcon} fa-lg'></span><span class="device-name">${device.deviceName}</span>`;
+    
+    const deviceControls = document.createElement("div");
+    deviceControls.className = "device-controls";
+    
+    // Power button
+    const powerBtn = document.createElement("button");
+    powerBtn.className = `power-btn ${device.powerState}`;
+    powerBtn.innerHTML = '<span class="fa fa-power-off"></span>';
+    powerBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.toggleDevicePower(device.device, device.model, device.powerState);
+    });
+    
+    // Warm control group
+    const warmGroup = document.createElement("div");
+    warmGroup.className = "control-group";
+    warmGroup.innerHTML = `<label>Warm:</label><span class="value-display">${device.colorTemperature || 6500}K</span>`;
+    
+    const warmSlider = document.createElement("input");
+    warmSlider.type = "range";
+    warmSlider.className = "warm-slider";
+    warmSlider.min = "2000";
+    warmSlider.max = "9000";
+    warmSlider.value = device.colorTemperature || 6500;
+    warmSlider.addEventListener("change", (e) => {
+      e.stopPropagation();
+      this.updateDeviceWarm(device.device, device.model, e.target.value);
+      warmGroup.querySelector('.value-display').textContent = e.target.value + 'K';
+    });
+    warmGroup.insertBefore(warmSlider, warmGroup.querySelector('.value-display'));
+    
+    // Intensity control group
+    const intensityGroup = document.createElement("div");
+    intensityGroup.className = "control-group";
+    intensityGroup.innerHTML = `<label>Intensity:</label><span class="value-display">${device.brightness || 100}%</span>`;
+    
+    const intensitySlider = document.createElement("input");
+    intensitySlider.type = "range";
+    intensitySlider.className = "intensity-slider";
+    intensitySlider.min = "1";
+    intensitySlider.max = "100";
+    intensitySlider.value = device.brightness || 100;
+    intensitySlider.addEventListener("change", (e) => {
+      e.stopPropagation();
+      this.updateDeviceIntensity(device.device, device.model, e.target.value);
+      intensityGroup.querySelector('.value-display').textContent = e.target.value + '%';
+    });
+    intensityGroup.insertBefore(intensitySlider, intensityGroup.querySelector('.value-display'));
+    
+    // Assemble the controls
+    deviceControls.appendChild(powerBtn);
+    deviceControls.appendChild(warmGroup);
+    deviceControls.appendChild(intensityGroup);
+    
+    // Clear and add new content
+    deviceElement.innerHTML = '';
+    deviceElement.appendChild(deviceHeader);
+    deviceElement.appendChild(deviceControls);
+    
+    deviceElement.dataset.expanded = "true";
+    deviceElement.classList.add("expanded");
+  },
+
+  toggleDevicePower: function (deviceMac, deviceModel, currentState) {
+    this.sendSocketNotification("TOGGLE_GOVEE_DEVICE", {
+      device: deviceMac,
+      model: deviceModel,
+      currentState: currentState
+    });
+  },
+
+  updateDeviceWarm: function (deviceMac, deviceModel, colorTemp) {
+    this.sendSocketNotification("UPDATE_GOVEE_COLOR_TEMP", {
+      device: deviceMac,
+      model: deviceModel,
+      colorTemperature: parseInt(colorTemp)
+    });
+  },
+
+  updateDeviceIntensity: function (deviceMac, deviceModel, brightness) {
+    this.sendSocketNotification("UPDATE_GOVEE_BRIGHTNESS", {
+      device: deviceMac,
+      model: deviceModel,
+      brightness: parseInt(brightness)
+    });
+  },
+
+  createAllLightsButton: function () {
+    const allButtonItem = document.createElement("li");
+    allButtonItem.className = "li-t all-lights-button";
+    
+    // Determine if most devices are on or off to decide the action
+    const onDevices = this.goveeDevices.filter(d => d.powerState === "on").length;
+    const totalDevices = this.goveeDevices.length;
+    const mostlyOn = onDevices > totalDevices / 2;
+    
+    const action = mostlyOn ? "off" : "on";
+    const icon = mostlyOn ? "fa-moon-o" : "fa-sun-o";
+    const text = mostlyOn ? "Turn All Off" : "Turn All On";
+    
+    allButtonItem.innerHTML = `<span class='fa ${icon} fa-lg'></span><br>${text}`;
+    allButtonItem.dataset.action = action;
+    
+    allButtonItem.addEventListener("click", () => {
+      this.toggleAllLights(action);
+    });
+
+    return allButtonItem;
+  },
+
+  toggleAllLights: function (action) {
+    console.log(`Turning all lights ${action}`);
+    this.sendSocketNotification("TOGGLE_ALL_GOVEE_DEVICES", {
+      action: action,
+      devices: this.goveeDevices
+    });
   },
 
   createGoveeMenuDiv: function () {
@@ -221,6 +380,16 @@ Module.register("MMM-SmartTouch", {
       noDevicesItem.className = "li-t";
       deviceList.appendChild(noDevicesItem);
     } else {
+      // Add "Turn All On/Off" button at the top
+      const allButton = this.createAllLightsButton();
+      deviceList.appendChild(allButton);
+      
+      // Add separator
+      const separator = document.createElement("li");
+      separator.className = "menu-separator";
+      deviceList.appendChild(separator);
+      
+      // Add individual devices
       this.goveeDevices.forEach(device => {
         const deviceButton = this.createGoveeDeviceButton(device);
         deviceList.appendChild(deviceButton);
@@ -246,6 +415,16 @@ Module.register("MMM-SmartTouch", {
         noDevicesItem.className = "li-t";
         deviceList.appendChild(noDevicesItem);
       } else {
+        // Add "Turn All On/Off" button at the top
+        const allButton = this.createAllLightsButton();
+        deviceList.appendChild(allButton);
+        
+        // Add separator
+        const separator = document.createElement("li");
+        separator.className = "menu-separator";
+        deviceList.appendChild(separator);
+        
+        // Add individual devices
         this.goveeDevices.forEach(device => {
           const deviceButton = this.createGoveeDeviceButton(device);
           deviceList.appendChild(deviceButton);
@@ -304,6 +483,18 @@ Module.register("MMM-SmartTouch", {
         this.goveeDevices[deviceIndex].powerState = payload.newState;
         this.refreshGoveeMenu();
       }
+    }
+
+    if (notification === "ALL_GOVEE_DEVICES_TOGGLED") {
+      Log.info(`All devices toggle completed: ${payload.results.filter(r => r.success).length}/${payload.results.length} succeeded`);
+      // Update device states based on results
+      payload.results.forEach(result => {
+        const deviceIndex = this.goveeDevices.findIndex(d => d.device === result.device);
+        if (deviceIndex !== -1) {
+          this.goveeDevices[deviceIndex].powerState = result.newState;
+        }
+      });
+      this.refreshGoveeMenu();
     }
   },
 
