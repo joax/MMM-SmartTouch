@@ -711,6 +711,17 @@ Module.register("MMM-SmartTouch", {
     }
   },
 
+  updateDeviceButtonInMenu: function (deviceMac) {
+    const deviceButton = document.querySelector(`[data-device-mac="${deviceMac}"]`);
+    if (deviceButton) {
+      const device = this.getDeviceState(deviceMac);
+      if (device) {
+        this.updateDeviceButtonDisplay(deviceButton, device);
+        Log.info(`Updated menu button for device ${deviceMac}: ${device.powerState}`);
+      }
+    }
+  },
+
   getDom: function () {
     // Initial standby state
     document.body.className = "st-standby show";
@@ -752,8 +763,13 @@ Module.register("MMM-SmartTouch", {
     
     if (notification === "GOVEE_DEVICES_LIST") {
       this.goveeDevices = payload;
-      Log.info(`Received ${this.goveeDevices.length} Govee devices`);
+      Log.info(`Received ${this.goveeDevices.length} Govee devices with states`);
       this.refreshGoveeMenu();
+      
+      // Log device states for debugging
+      this.goveeDevices.forEach(device => {
+        Log.info(`Device ${device.deviceName} (${device.device}): ${device.powerState || 'unknown'}`);
+      });
     }
 
     if (notification === "GOVEE_DEVICE_TOGGLED") {
@@ -767,8 +783,10 @@ Module.register("MMM-SmartTouch", {
       if (updatedDevice) {
         // Update modal if this device modal is open
         this.updateModalValues(payload.device, undefined, undefined, payload.newState);
-        // Refresh menu to show new state
-        this.refreshGoveeMenu();
+        
+        // Update the specific device button in the menu (more efficient than full refresh)
+        this.updateDeviceButtonInMenu(payload.device);
+        
         // Update all devices button
         this.updateAllDevicesButtonInMenu();
       }
@@ -777,14 +795,17 @@ Module.register("MMM-SmartTouch", {
     if (notification === "ALL_GOVEE_DEVICES_TOGGLED") {
       Log.info(`All devices toggle completed: ${payload.results.filter(r => r.success).length}/${payload.results.length} succeeded`);
       
-      // Update all device states
+      // Update all device states and their menu buttons
       payload.results.forEach(result => {
         this.updateDeviceState(result.device, {
           powerState: result.newState
         });
+        // Update individual device button in menu
+        this.updateDeviceButtonInMenu(result.device);
       });
       
-      this.refreshGoveeMenu();
+      // Update all devices button
+      this.updateAllDevicesButtonInMenu();
     }
 
     if (notification === "GOVEE_DEVICE_STATE_UPDATED") {
@@ -793,12 +814,18 @@ Module.register("MMM-SmartTouch", {
       // Update device state
       const updatedDevice = this.updateDeviceState(payload.device, {
         brightness: payload.brightness,
-        colorTemperature: payload.colorTemperature
+        colorTemperature: payload.colorTemperature,
+        powerState: payload.powerState // Include power state if provided
       });
       
       if (updatedDevice) {
         // Update modal values if this device modal is currently open
-        this.updateModalValues(payload.device, payload.brightness, payload.colorTemperature);
+        this.updateModalValues(payload.device, payload.brightness, payload.colorTemperature, payload.powerState);
+        
+        // Update menu button if power state changed
+        if (payload.powerState !== undefined) {
+          this.updateDeviceButtonInMenu(payload.device);
+        }
       }
     }
 

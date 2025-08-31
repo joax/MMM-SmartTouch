@@ -158,22 +158,27 @@ module.exports = NodeHelper.create({
     const statePromises = devices.map(async device => {
       const state = await this.getGoveeDeviceState(device.device, device.model);
       
+      let deviceWithState;
       if (state) {
-        return {
+        deviceWithState = {
           ...device,
           powerState: state.powerState,
           brightness: state.brightness,
           colorTemperature: state.colorTemperature
         };
+        console.log(`✓ Device ${device.deviceName} state: ${state.powerState}, ${state.brightness}%, ${state.colorTemperature}K`);
       } else {
         // Fallback to defaults if state fetch fails
-        return {
+        deviceWithState = {
           ...device,
           powerState: device.powerState || "off",
           brightness: 100,
           colorTemperature: 6500
         };
+        console.log(`⚠ Device ${device.deviceName} state fetch failed, using defaults: off, 100%, 6500K`);
       }
+      
+      return deviceWithState;
     });
 
     const devicesWithStates = await Promise.all(statePromises);
