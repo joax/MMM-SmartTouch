@@ -475,6 +475,12 @@ Module.register("MMM-SmartTouch", {
       return;
     }
     
+    // Debug: Log current device state values
+    Log.info(`Opening modal for ${currentDeviceState.deviceName}:`);
+    Log.info(`  Power: ${currentDeviceState.powerState}`);
+    Log.info(`  Brightness: ${currentDeviceState.brightness}%`);
+    Log.info(`  Color Temp: ${currentDeviceState.colorTemperature}K`);
+    
     // Always recreate controls with fresh event listeners and current state
     modalBody.innerHTML = '';
     const deviceControls = this.createModalDeviceControls(currentDeviceState);
@@ -482,6 +488,13 @@ Module.register("MMM-SmartTouch", {
     
     // Show modal
     modal.style.display = "flex";
+    
+    // Request fresh device state from API to update modal if needed
+    Log.info(`Requesting fresh device state for ${device.device}`);
+    this.sendSocketNotification("GET_GOVEE_DEVICE_STATE", {
+      device: device.device,
+      model: device.model
+    });
   },
 
   closeDeviceModal: function () {
@@ -801,6 +814,8 @@ Module.register("MMM-SmartTouch", {
     const maxTemp = device.colorTempRange ? device.colorTempRange.max : 9000;
     const currentTemp = device.colorTemperature || Math.floor((minTemp + maxTemp) / 2);
     
+    Log.info(`Creating color temp control for ${device.deviceName}: ${currentTemp}K (range: ${minTemp}K-${maxTemp}K)`);
+    
     const disabledClass = isSupported ? "" : " disabled";
     const disabledAttr = isSupported ? "" : " disabled";
     const title = isSupported ? `Color Temperature (${minTemp}K-${maxTemp}K)` : "Color Temperature (Not Supported)";
@@ -846,16 +861,19 @@ Module.register("MMM-SmartTouch", {
   createModalBrightnessControl: function (device) {
     const brightnessControl = document.createElement("div");
     brightnessControl.className = "vertical-slider-control";
+    const currentBrightness = device.brightness || 100;
+    Log.info(`Creating brightness control for ${device.deviceName}: ${currentBrightness}%`);
+    
     brightnessControl.innerHTML = `
       <h4>Brightness</h4>
       <div class="vertical-slider-container">
         <label class="slider-label-top">Bright</label>
         <input type="range" class="modal-intensity-slider vertical-slider" 
-               min="1" max="100" value="${device.brightness || 100}" 
+               min="1" max="100" value="${currentBrightness}" 
                orient="vertical">
         <label class="slider-label-bottom">Dim</label>
       </div>
-      <div class="value-display">${device.brightness || 100}%</div>
+      <div class="value-display">${currentBrightness}%</div>
     `;
     
     const slider = brightnessControl.querySelector('.modal-intensity-slider');
@@ -1136,6 +1154,25 @@ Module.register("MMM-SmartTouch", {
       
       // Refresh menu to show any updated states
       this.refreshGoveeMenu();
+    }
+
+    if (notification === "GOVEE_DEVICE_FRESH_STATE") {
+      Log.info(`Received fresh state for device ${payload.device}: power=${payload.powerState}, brightness=${payload.brightness}%, colorTemp=${payload.colorTemperature}K`);
+      
+      // Update device state in our array
+      const updatedDevice = this.updateDeviceState(payload.device, {
+        powerState: payload.powerState,
+        brightness: payload.brightness,
+        colorTemperature: payload.colorTemperature
+      });
+      
+      if (updatedDevice) {
+        // Update modal values if this device modal is currently open
+        this.updateModalValues(payload.device, payload.brightness, payload.colorTemperature, payload.powerState);
+        
+        // Update menu button to reflect fresh state
+        this.updateDeviceButtonInMenu(payload.device);
+      }
     }
   },
 

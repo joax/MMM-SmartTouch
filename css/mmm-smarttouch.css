@@ -641,14 +641,8 @@
 
 /* ===== SET ALL LIGHTS BUTTON & MODAL ===== */
 
-.set-all-lights-button {
-  background: linear-gradient(135deg, #2196F3, #1976D2);
-  border-radius: 8px;
-  margin-bottom: 5px;
-}
-
 .set-all-lights-button:hover {
-  background: linear-gradient(135deg, #1976D2, #1565C0);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .set-all-lights-modal {

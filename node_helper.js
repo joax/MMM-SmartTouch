@@ -282,6 +282,26 @@ module.exports = NodeHelper.create({
         });
     }
 
+    if (notification === "GET_GOVEE_DEVICE_STATE") {
+      const { device, model } = payload;
+      console.log(`Fetching fresh state for device ${device} (${model})`);
+      
+      this.getGoveeDeviceState(device, model)
+        .then(state => {
+          if (state) {
+            console.log(`Fresh state for ${device}: power=${state.powerState}, brightness=${state.brightness}%, colorTemp=${state.colorTemperature}K`);
+            this.sendSocketNotification("GOVEE_DEVICE_FRESH_STATE", {
+              device: device,
+              powerState: state.powerState,
+              brightness: state.brightness,
+              colorTemperature: state.colorTemperature
+            });
+          } else {
+            console.warn(`Failed to get fresh state for device ${device}`);
+          }
+        });
+    }
+
     if (notification === "TOGGLE_GOVEE_DEVICE") {
       const { device, model, currentState } = payload;
       const newState = currentState === "on" ? "off" : "on";
