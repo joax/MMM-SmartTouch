@@ -19,6 +19,7 @@ module.exports = NodeHelper.create({
     this.goveeApiKey = process.env.GOVEE_API_KEY;
     this.goveeApiUrl = "https://developer-api.govee.com/v1/devices/control";
     this.goveeDevicesUrl = "https://developer-api.govee.com/v1/devices";
+    this.goveeStateUrl = "https://developer-api.govee.com/v1/devices/state";
     
     if (!this.goveeApiKey) {
       console.warn("Govee API key missing. Please check your .env file.");
@@ -80,6 +81,76 @@ module.exports = NodeHelper.create({
     }
   },
 
+  // Get current state of a specific Govee device
+  getGoveeDeviceState: async function(deviceMac, deviceModel) {
+    if (!this.goveeApiKey) {
+      console.error("Govee API key not configured");
+      return null;
+    }
+
+    try {
+      const response = await axios.get(`${this.goveeStateUrl}?device=${deviceMac}&model=${deviceModel}`, {
+        headers: {
+          'Govee-API-Key': this.goveeApiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.status === 200 && response.data.data) {
+        const state = response.data.data;
+        console.log(`Device ${deviceMac} state:`, state);
+        return {
+          powerState: state.powerState,
+          brightness: state.brightness,
+          colorTemperature: state.color?.colorTemInKelvin || null
+        };
+      } else {
+        console.log(`No state data for device ${deviceMac}`);
+        return null;
+      }
+    } catch (error) {
+      console.error(`Govee device state API error for ${deviceMac}: ${error.message}`);
+      return null;
+    }
+  },
+
+  // Enhanced method to get devices with their current states
+  getGoveeDevicesWithStates: async function() {
+    const devices = await this.getGoveeDevices();
+    if (devices.length === 0) {
+      return devices;
+    }
+
+    console.log(`Fetching states for ${devices.length} devices...`);
+    
+    // Get states for all devices in parallel
+    const statePromises = devices.map(async device => {
+      const state = await this.getGoveeDeviceState(device.device, device.model);
+      
+      if (state) {
+        return {
+          ...device,
+          powerState: state.powerState,
+          brightness: state.brightness,
+          colorTemperature: state.colorTemperature
+        };
+      } else {
+        // Fallback to defaults if state fetch fails
+        return {
+          ...device,
+          powerState: device.powerState || "off",
+          brightness: 100,
+          colorTemperature: 6500
+        };
+      }
+    });
+
+    const devicesWithStates = await Promise.all(statePromises);
+    console.log(`Retrieved states for ${devicesWithStates.length} devices`);
+    
+    return devicesWithStates;
+  },
+
   socketNotificationReceived: function (notification, payload) {
     if (notification === 'CONFIG') {
       if (!this.started) {
@@ -139,8 +210,8 @@ module.exports = NodeHelper.create({
 
 
     if (notification === "GET_GOVEE_DEVICES") {
-      console.log("Fetching Govee devices...")
-      this.getGoveeDevices()
+      console.log("Fetching Govee devices with current states...")
+      this.getGoveeDevicesWithStates()
         .then(devices => {
           this.sendSocketNotification("GOVEE_DEVICES_LIST", devices);
         });
@@ -174,6 +245,10 @@ module.exports = NodeHelper.create({
         .then(success => {
           if (success) {
             console.log(`Color temperature updated successfully`);
+            this.sendSocketNotification("GOVEE_DEVICE_STATE_UPDATED", {
+              device: device,
+              colorTemperature: colorTemperature
+            });
           } else {
             console.error(`Failed to update color temperature for device ${device}`);
           }
@@ -189,6 +264,10 @@ module.exports = NodeHelper.create({
         .then(success => {
           if (success) {
             console.log(`Brightness updated successfully`);
+            this.sendSocketNotification("GOVEE_DEVICE_STATE_UPDATED", {
+              device: device,
+              brightness: brightness
+            });
           } else {
             console.error(`Failed to update brightness for device ${device}`);
           }

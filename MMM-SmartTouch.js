@@ -496,6 +496,22 @@ Module.register("MMM-SmartTouch", {
       });
       this.refreshGoveeMenu();
     }
+
+    if (notification === "GOVEE_DEVICE_STATE_UPDATED") {
+      // Update specific device properties without full menu refresh
+      const deviceIndex = this.goveeDevices.findIndex(d => d.device === payload.device);
+      if (deviceIndex !== -1) {
+        if (payload.brightness !== undefined) {
+          this.goveeDevices[deviceIndex].brightness = payload.brightness;
+          Log.info(`Device ${payload.device} brightness updated to ${payload.brightness}%`);
+        }
+        if (payload.colorTemperature !== undefined) {
+          this.goveeDevices[deviceIndex].colorTemperature = payload.colorTemperature;
+          Log.info(`Device ${payload.device} color temperature updated to ${payload.colorTemperature}K`);
+        }
+        // Don't refresh menu here to avoid interrupting user interaction with sliders
+      }
+    }
   },
 
 });
